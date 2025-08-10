@@ -3,10 +3,12 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useNiche } from "@/contexts/NicheContext";
+import { useButtonProtection } from "@/contexts/ProtectionContext";
 import Link from "next/link";
 
 function ScriptWriterContent() {
   const { selectedNiche, setSelectedNiche } = useNiche();
+  const { protectedClick } = useButtonProtection();
   const searchParams = useSearchParams();
   const [scriptTopic, setScriptTopic] = useState("");
   const [generatedScript, setGeneratedScript] = useState<any>(null);
@@ -149,7 +151,7 @@ function ScriptWriterContent() {
 
                 <div className="flex gap-4">
                   <button
-                    onClick={generateScript}
+                    onClick={protectedClick(generateScript)}
                     disabled={loading || !scriptTopic.trim()}
                     className="flex-1 px-8 py-4 bg-transparent border-2 border-accent text-accent rounded-lg font-semibold text-lg hover:bg-purple-50 hover:border-purple-600 hover:text-purple-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
                   >
@@ -346,7 +348,7 @@ function ScriptWriterContent() {
                     Select Niche First
                   </button>
                   <button
-                    onClick={generateScript}
+                    onClick={protectedClick(generateScript)}
                     disabled={loading || !scriptTopic.trim()}
                     className="flex-1 px-8 py-3 bg-transparent border-2 border-accent text-accent rounded-lg font-semibold hover:bg-purple-50 hover:border-purple-600 hover:text-purple-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >

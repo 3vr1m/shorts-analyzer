@@ -76,8 +76,8 @@ export default function Home() {
   const [data, setData] = useState<Analysis | null>(null);
   
   // Protection system
-  const { checkProtection } = useProtection();
-  const { protectedClick } = useButtonProtection();
+  const protection = useProtection();
+  const buttonProtection = useButtonProtection();
   const [motivationInput, setMotivationInput] = useState("");
   const steps = [
     "Fetching metadata",
@@ -92,7 +92,7 @@ export default function Home() {
   const handleMotivationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setMotivationInput(value);
-    checkProtection(value);
+    protection.checkProtection(value);
   };
 
   async function onAnalyze() {
@@ -228,7 +228,7 @@ export default function Home() {
               className="flex-1 px-6 py-4 text-lg bg-card border border-default rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-colors placeholder-text-muted"
             />
             <button
-              onClick={protectedClick(onAnalyze)}
+              onClick={buttonProtection.protectedClick(onAnalyze)}
               disabled={loading}
               className="px-8 py-4 bg-accent text-white rounded-lg font-medium text-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3"
             >

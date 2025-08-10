@@ -6,6 +6,7 @@ interface ProtectionContextType {
   isUnlocked: boolean;
   checkProtection: (input: string) => boolean;
   unlock: () => void;
+  isClient: boolean;
 }
 
 const ProtectionContext = createContext<ProtectionContextType | undefined>(undefined);
@@ -15,19 +16,21 @@ const STORAGE_KEY = "daily_motivation_unlocked";
 
 export function ProtectionProvider({ children }: { children: React.ReactNode }) {
   const [isUnlocked, setIsUnlocked] = useState(false);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
   // Check if already unlocked in this session
   useEffect(() => {
-    setIsHydrated(true);
-    const stored = sessionStorage.getItem(STORAGE_KEY);
-    if (stored === "true") {
-      setIsUnlocked(true);
+    setIsClient(true);
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem(STORAGE_KEY);
+      if (stored === "true") {
+        setIsUnlocked(true);
+      }
     }
   }, []);
 
   const checkProtection = (input: string): boolean => {
-    if (!isHydrated) return false;
+    if (!isClient || typeof window === 'undefined') return false;
     
     const normalized = input.toLowerCase().trim();
     const isValid = normalized === PROTECTION_KEY.toLowerCase();
@@ -41,54 +44,57 @@ export function ProtectionProvider({ children }: { children: React.ReactNode }) 
   };
 
   const unlock = () => {
-    if (!isHydrated) return;
+    if (!isClient || typeof window === 'undefined') return;
     setIsUnlocked(true);
     sessionStorage.setItem(STORAGE_KEY, "true");
   };
 
   return (
-    <ProtectionContext.Provider value={{ isUnlocked, checkProtection, unlock }}>
+    <ProtectionContext.Provider value={{ isUnlocked, checkProtection, unlock, isClient }}>
       {children}
     </ProtectionContext.Provider>
   );
 }
 
 export function useProtection() {
+  // Safe fallback for SSR
+  if (typeof window === 'undefined') {
+    return {
+      isUnlocked: false,
+      checkProtection: () => false,
+      unlock: () => {},
+      isClient: false
+    };
+  }
+
   const context = useContext(ProtectionContext);
   if (context === undefined) {
-    // Return a default context for SSR
-    if (typeof window === 'undefined') {
-      return {
-        isUnlocked: false,
-        checkProtection: () => false,
-        unlock: () => {}
-      };
-    }
-    throw new Error('useProtection must be used within a ProtectionProvider');
+    // Fallback for missing provider
+    return {
+      isUnlocked: false,
+      checkProtection: () => false,
+      unlock: () => {},
+      isClient: false
+    };
   }
   return context;
 }
 
 // Helper hook for button protection
 export function useButtonProtection() {
-  const [isHydrated, setIsHydrated] = useState(false);
-  const { isUnlocked } = useProtection();
-  
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
+  const { isUnlocked, isClient } = useProtection();
   
   const protectedClick = (originalHandler: () => void) => {
     return () => {
-      if (!isHydrated) return; // Don't do anything until hydrated
+      if (!isClient || typeof window === 'undefined') return; // Don't do anything on server
       
       if (!isUnlocked) {
-        // Subtle hint without being obvious
+        // Subtle hint for API functions without being obvious
         const hints = [
-          "🌟 Start your day with motivation first!",
-          "💡 Don't forget your daily inspiration!", 
-          "✨ Share your purpose for today!",
-          "🎯 Set your intention above first!"
+          "🌟 Share your daily motivation to unlock AI features!",
+          "💡 Set your daily inspiration above to analyze content!", 
+          "✨ Tell us your purpose today to access AI tools!",
+          "🎯 Add your motivation above to start analyzing!"
         ];
         const randomHint = hints[Math.floor(Math.random() * hints.length)];
         alert(randomHint);
@@ -98,5 +104,9 @@ export function useButtonProtection() {
     };
   };
 
-  return { isUnlocked: isHydrated ? isUnlocked : false, protectedClick };
+  return { 
+    isUnlocked: isClient ? isUnlocked : false, 
+    protectedClick,
+    isClient 
+  };
 }

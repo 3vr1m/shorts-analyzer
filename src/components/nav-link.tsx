@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
-import { useButtonProtection } from "@/contexts/ProtectionContext";
 
 interface NavLinkProps {
   href: string;
@@ -13,43 +11,16 @@ interface NavLinkProps {
 export function NavLink({ href, label }: NavLinkProps) {
   const pathname = usePathname();
   const isActive = pathname === href;
-  const [isClient, setIsClient] = useState(false);
   
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-  
-  // Always call the hook, but handle client/server differences
-  const { isUnlocked } = useButtonProtection();
-  
-  // Allow access to current page and monitoring page
-  const isPublicPage = href === pathname || href === '/monitoring' || href === '/resources';
-  
-  const handleClick = (e: React.MouseEvent) => {
-    if (!isClient) return; // Don't do anything until client-side hydrated
-    
-    if (!isUnlocked && !isPublicPage) {
-      e.preventDefault();
-      const hints = [
-        "🌟 Share your daily motivation first!",
-        "💡 Set your intention for today above!",
-        "✨ What's driving you today?",
-        "🎯 Tell us your purpose for today!"
-      ];
-      const randomHint = hints[Math.floor(Math.random() * hints.length)];
-      alert(randomHint);
-    }
-  };
-  
+  // No protection on navigation - let users browse freely
   return (
     <Link 
       href={href}
-      onClick={handleClick}
       className={`relative py-2 px-1 text-sm font-medium transition-colors duration-200 ${
         isActive 
           ? 'text-foreground' 
           : 'text-muted hover:text-foreground'
-      } ${!isUnlocked && !isPublicPage ? 'opacity-75' : ''}`}
+      }`}
     >
       {label}
       {isActive && (

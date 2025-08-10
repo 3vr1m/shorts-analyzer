@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useNiche } from "@/contexts/NicheContext";
+import { useButtonProtection } from "@/contexts/ProtectionContext";
 
 type TrendItem = {
   id: string;
@@ -29,6 +30,7 @@ export default function TrendsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<TrendItem[]>([]);
+  const { protectedClick } = useButtonProtection();
   const [meta, setMeta] = useState<any>(null);
   const stepsApi = ["Discovering trending content", "Analyzing engagement", "Filtering results", "Done"];
   const [activeStep, setActiveStep] = useState<number>(-1);
@@ -342,7 +344,7 @@ export default function TrendsPage() {
                     <input type="number" min={1} max={50} value={max} onChange={(e) => setMax(Number(e.target.value))} className="rounded border-2 border-default bg-card text-foreground px-2 py-2 text-base w-20 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent" />
                   </div>
                   <button 
-                    onClick={fetchTrends} 
+                    onClick={protectedClick(fetchTrends)} 
                     disabled={loading} 
                     className="rounded bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-4 py-2 text-base font-medium transition-colors disabled:cursor-not-allowed"
                   >
@@ -389,7 +391,7 @@ export default function TrendsPage() {
                     <input type="number" min={1} max={20} value={max} onChange={(e) => setMax(Number(e.target.value))} className="rounded border-2 border-default bg-card text-foreground px-2 py-2 text-base w-20 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent" />
                   </div>
                   <button 
-                    onClick={fetchTrends} 
+                    onClick={protectedClick(fetchTrends)} 
                     disabled={loading} 
                     className="rounded bg-pink-600 hover:bg-pink-700 disabled:bg-gray-400 text-white px-4 py-2 text-base font-medium transition-colors disabled:cursor-not-allowed"
                   >

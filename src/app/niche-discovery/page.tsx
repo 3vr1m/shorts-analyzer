@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ContentIdeas, ContentIdea } from "@/components/ui/content-ideas";
+import { useButtonProtection } from "@/contexts/ProtectionContext";
 
 type NicheResult = {
   niche: string;
@@ -19,6 +20,7 @@ type NicheResult = {
 
 export default function NicheDiscoveryPage() {
   const [currentStep, setCurrentStep] = useState<'questionnaire' | 'results'>('questionnaire');
+  const { protectedClick } = useButtonProtection();
   const [formData, setFormData] = useState({
     passions: '',
     experience: '',
@@ -299,7 +301,7 @@ export default function NicheDiscoveryPage() {
             {/* Submit Button */}
             <div className="pt-6">
               <button
-                onClick={generateNiche}
+                onClick={protectedClick(generateNiche)}
                 disabled={loading || !formData.passions.trim()}
                 className="w-full px-8 py-4 bg-accent text-white rounded-lg font-semibold text-lg hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
               >
