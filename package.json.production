@@ -1,0 +1,17 @@
+{
+  "name": "shorts-analyzer",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "next start",
+    "build": "next build"
+  },
+  "dependencies": {
+    "next": "15.4.6",
+    "react": "^18",
+    "react-dom": "^18"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
