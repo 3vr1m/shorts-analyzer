@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NavLink } from "@/components/nav-link";
 import { NicheProvider } from "@/contexts/NicheContext";
+import { ProtectionProvider } from "@/contexts/ProtectionContext";
 
 const openSans = Open_Sans({
   variable: "--font-open-sans",
@@ -60,9 +61,11 @@ export default function RootLayout({
               <ThemeToggle />
             </div>
           </header>
-          <NicheProvider>
-            {children}
-          </NicheProvider>
+          <ProtectionProvider>
+            <NicheProvider>
+              {children}
+            </NicheProvider>
+          </ProtectionProvider>
         </ThemeProvider>
       </body>
     </html>

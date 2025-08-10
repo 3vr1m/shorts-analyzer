@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ContentIdeas, ContentIdea } from "@/components/ui/content-ideas";
+import { useProtection, useButtonProtection } from "@/contexts/ProtectionContext";
 
 type Analysis = {
   metadata: { title: string; channel: string; views: number; published: string };
@@ -73,6 +74,11 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<Analysis | null>(null);
+  
+  // Protection system
+  const { checkProtection } = useProtection();
+  const { protectedClick } = useButtonProtection();
+  const [motivationInput, setMotivationInput] = useState("");
   const steps = [
     "Fetching metadata",
     "Downloading audio",
@@ -82,6 +88,12 @@ export default function Home() {
   ];
   const [activeStep, setActiveStep] = useState<number>(-1);
   const [progressText, setProgressText] = useState<string>("");
+
+  const handleMotivationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setMotivationInput(value);
+    checkProtection(value);
+  };
 
   async function onAnalyze() {
     setError(null);
@@ -186,6 +198,25 @@ export default function Home() {
           </div>
         </div>
         
+        {/* Motivational Input - Hidden Protection */}
+        <div className="mb-8">
+          <div className="max-w-md mx-auto">
+            <label className="block text-sm font-medium text-muted mb-2 text-center">
+              💫 What's your motivation for today?
+            </label>
+            <input
+              type="text"
+              placeholder="Share your purpose and inspiration..."
+              value={motivationInput}
+              onChange={handleMotivationChange}
+              className="w-full px-4 py-3 text-base bg-card border border-default rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-colors placeholder-text-muted text-center"
+            />
+            <p className="text-xs text-muted mt-2 text-center italic">
+              Start each day with intention and purpose ✨
+            </p>
+          </div>
+        </div>
+        
         {/* Clean Input Section */}
         <div className="mb-16">
           <div className="flex flex-col sm:flex-row gap-4 mb-8">
@@ -197,7 +228,7 @@ export default function Home() {
               className="flex-1 px-6 py-4 text-lg bg-card border border-default rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-colors placeholder-text-muted"
             />
             <button
-              onClick={onAnalyze}
+              onClick={protectedClick(onAnalyze)}
               disabled={loading}
               className="px-8 py-4 bg-accent text-white rounded-lg font-medium text-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3"
             >
