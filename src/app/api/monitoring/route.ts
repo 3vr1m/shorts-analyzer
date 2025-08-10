@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdminRequest } from '@/lib/auth';
-import { getSystemMetrics } from '@/lib/monitoring';
+import { monitoring } from '@/lib/monitoring';
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get system metrics
-    const metrics = await getSystemMetrics();
+    const metrics = monitoring.exportLogs();
     
     return NextResponse.json({
       success: true,
@@ -50,7 +50,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Clear logs functionality
-    // In a real implementation, this would clear log files or database entries
+    monitoring.clearOldLogs(0); // Clear all logs
     console.log('Admin requested log clearing at:', new Date().toISOString());
     
     return NextResponse.json({
