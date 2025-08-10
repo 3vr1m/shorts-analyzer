@@ -120,13 +120,19 @@ export default function MonitoringPage() {
     try {
       setLoading(true);
       const response = await fetch('/api/monitoring');
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch monitoring data');
+        const errorData = await response.json().catch(() => null);
+        const errorMessage = errorData?.error || `HTTP ${response.status}: ${response.statusText}`;
+        throw new Error(errorMessage);
       }
+      
       const monitoringData = await response.json();
+      console.log('Monitoring data received:', monitoringData);
       setData(monitoringData);
       setError(null);
     } catch (err) {
+      console.error('Fetch error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);

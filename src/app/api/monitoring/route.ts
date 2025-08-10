@@ -4,12 +4,26 @@ import { monitoring } from '@/lib/monitoring';
 
 export async function GET(request: NextRequest) {
   try {
-    // Check admin access
-    if (!isAdminRequest(request)) {
+    const url = new URL(request.url);
+    const adminSecret = url.searchParams.get('admin_secret');
+    const adminKey = request.headers.get('x-admin-key');
+    
+    // Check if environment variables are set
+    const hasAdminKey = !!process.env.ADMIN_API_KEY;
+    const hasAdminSecret = !!process.env.ADMIN_SECRET;
+    
+    // Simple authentication: check if admin key/secret matches
+    const isAuthenticated = 
+      (hasAdminKey && adminKey === process.env.ADMIN_API_KEY) ||
+      (hasAdminSecret && adminSecret === process.env.ADMIN_SECRET) ||
+      (!hasAdminKey && !hasAdminSecret); // Allow access if no auth is configured
+
+    if (!isAuthenticated) {
       return NextResponse.json(
         { 
           error: 'Access denied. Admin privileges required.',
-          code: 'ADMIN_ACCESS_REQUIRED'
+          code: 'ADMIN_ACCESS_REQUIRED',
+          hint: hasAdminSecret ? 'Try adding ?admin_secret=YOUR_SECRET to the URL' : 'Set x-admin-key header'
         },
         { status: 403 }
       );
@@ -18,10 +32,20 @@ export async function GET(request: NextRequest) {
     // Get system metrics
     const metrics = monitoring.exportLogs();
     
+    // Add some runtime stats
+    const runtimeStats = {
+      nodeVersion: process.version,
+      platform: process.platform,
+      uptime: process.uptime(),
+      memoryUsage: process.memoryUsage(),
+      timestamp: new Date().toISOString()
+    };
+    
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
-      data: metrics
+      ...metrics,
+      runtime: runtimeStats
     });
 
   } catch (error) {
