@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 import { useButtonProtection } from "@/contexts/ProtectionContext";
 
 interface NavLinkProps {
@@ -12,12 +13,21 @@ interface NavLinkProps {
 export function NavLink({ href, label }: NavLinkProps) {
   const pathname = usePathname();
   const isActive = pathname === href;
+  const [isClient, setIsClient] = useState(false);
+  
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+  
+  // Always call the hook, but handle client/server differences
   const { isUnlocked } = useButtonProtection();
   
   // Allow access to current page and monitoring page
   const isPublicPage = href === pathname || href === '/monitoring' || href === '/resources';
   
   const handleClick = (e: React.MouseEvent) => {
+    if (!isClient) return; // Don't do anything until client-side hydrated
+    
     if (!isUnlocked && !isPublicPage) {
       e.preventDefault();
       const hints = [
