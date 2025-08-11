@@ -1,7 +1,4 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-
-const execFileAsync = promisify(execFile);
+import youtubeDl from "youtube-dl-exec";
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -18,29 +15,40 @@ export async function ytSearchAndHydrate(opts: {
 
   // 1) Search
   const searchArg = `ytsearch${Math.min(50, Math.max(10, max * 2))}:${query}`;
-  const { stdout } = await execFileAsync("yt-dlp", ["--flat-playlist", "--dump-json", searchArg]);
-  const lines = stdout.split("\n").filter(Boolean);
+  const results = await youtubeDl(searchArg, {
+    flatPlaylist: true,
+    dumpSingleJson: false,
+    simulate: true,
+    quiet: true,
+    noWarnings: true
+  });
+  
+  // youtube-dl-exec returns a Payload object, cast it properly
+  const searchResults = Array.isArray(results) ? results : [results];
   const ids: string[] = [];
-  for (const line of lines) {
-    try {
-      const obj = JSON.parse(line);
-      const id = obj.id || obj.url || obj.webpage_url_basename || null;
-      if (id) ids.push(String(id));
-    } catch {}
+  for (const obj of searchResults) {
+    const item = obj as any;
+    const id = item.id || item.url || item.webpage_url_basename || null;
+    if (id) ids.push(String(id));
   }
 
   // 2) Hydrate per ID (limit and rate limit)
-  const results: any[] = [];
+  const videoResults: any[] = [];
   for (const id of ids.slice(0, max * 2)) {
     try {
       const url = `https://www.youtube.com/watch?v=${id}`;
-      const { stdout: j } = await execFileAsync("yt-dlp", ["-J", url]);
-      const data = JSON.parse(j);
+      const result = await youtubeDl(url, {
+        dumpSingleJson: true,
+        noCheckCertificates: true,
+        noWarnings: true,
+        quiet: true
+      });
+      const data = result as any;
       const seconds = Number(data.duration || 0);
       if (duration === "short" && seconds > 60) continue;
       if (duration === "medium" && !(seconds > 60 && seconds <= 1200)) continue;
       if (duration === "long" && seconds <= 1200) continue;
-      results.push({
+      videoResults.push({
         id: data.id,
         url,
         title: data.title,
@@ -52,7 +60,7 @@ export async function ytSearchAndHydrate(opts: {
         commentCount: Number(data.comment_count || 0),
         region: "",
       });
-      if (results.length >= max) break;
+      if (videoResults.length >= max) break;
       await sleep(200); // Reduced from 500ms for better performance
     } catch {
       // ignore individual failures
@@ -61,6 +69,6 @@ export async function ytSearchAndHydrate(opts: {
   }
 
   // Sort by a simple velocity proxy: views (descending)
-  results.sort((a, b) => (b.views || 0) - (a.views || 0));
-  return results.slice(0, max);
+  videoResults.sort((a, b) => (b.views || 0) - (a.views || 0));
+  return videoResults.slice(0, max);
 }

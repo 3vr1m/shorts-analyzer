@@ -121,9 +121,19 @@ export default function Home() {
     startInterval();
 
     try {
-      // Use client-side API instead of server route
-      const { analyzeVideoClient } = await import("@/lib/client-apis");
-      const result = await analyzeVideoClient(url);
+      // Call the real API route for analysis
+      const response = await fetch("/api/analyze-video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
       
       if (!result.success) {
         throw new Error(result.error || 'Analysis failed');
@@ -171,18 +181,18 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      <main className="mx-auto max-w-4xl px-8 py-16">
+      <main className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8 lg:py-16">
         {/* Header Section */}
-        <div className="text-center mb-20">
-          <h1 className="text-5xl font-bold mb-6 text-foreground tracking-tight font-inter">
+        <div className="text-center mb-12 lg:mb-20">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 lg:mb-6 text-foreground tracking-tight font-inter">
             AI Video Analyzer
           </h1>
-          <p className="text-xl text-muted max-w-2xl mx-auto mb-12 leading-relaxed">
+          <p className="text-lg lg:text-xl text-muted max-w-2xl mx-auto mb-8 lg:mb-12 leading-relaxed px-4">
             Transform any video into actionable content insights with AI-powered analysis
           </p>
           
           {/* Platform Support - Subtle */}
-          <div className="flex items-center justify-center gap-8 text-base text-muted">
+          <div className="flex items-center justify-center gap-4 sm:gap-8 text-sm sm:text-base text-muted">
             <span className="flex items-center gap-2">
               <span className="w-2 h-2 bg-accent rounded-full"></span>
               YouTube

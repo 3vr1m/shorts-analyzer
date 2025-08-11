@@ -1,10 +1,7 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-import { mkdtemp, rm, access } from "node:fs/promises";
+import youtubeDl from "youtube-dl-exec";
+import { mkdtemp, rm, access, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-
-const execFileAsync = promisify(execFile);
 
 export type VideoMetadata = {
   id: string;
@@ -17,8 +14,17 @@ export type VideoMetadata = {
 };
 
 export async function getVideoInfo(url: string): Promise<VideoMetadata> {
-  const { stdout } = await execFileAsync("yt-dlp", ["-J", url]);
-  const json = JSON.parse(stdout);
+  const result = await youtubeDl(url, {
+    dumpSingleJson: true,
+    noCheckCertificates: true,
+    noWarnings: true,
+    preferFreeFormats: true,
+    addHeader: ["referer:youtube.com", "user-agent:googlebot"]
+  });
+  
+  // youtube-dl-exec returns a Payload object, we need to cast it properly
+  const json = result as any;
+  
   const md: VideoMetadata = {
     id: json.id,
     title: json.title,
@@ -45,35 +51,27 @@ export async function extractSubtitles(url: string): Promise<string | null> {
     try {
       // Try to extract subtitles in multiple languages with priority order
       // Priority: auto-generated > manual > any available
-      const subtitleArgs = [
-        url,
-        "--write-subs",
-        "--write-auto-subs", 
-        "--sub-langs", "en.*,auto,live_chat,-live_chat", // English preference, then auto
-        "--skip-download",
-        "--no-playlist",
-        "-o", join(tmp, "%(title)s.%(ext)s"),
-        "--quiet",
-        "--no-warnings"
-      ];
-      
-      await execFileAsync("yt-dlp", subtitleArgs);
+      await youtubeDl(url, {
+        writeSub: true,
+        writeAutoSub: true,
+        subLang: "en.*,auto,live_chat,-live_chat", // English preference, then auto
+        skipDownload: true,
+        noPlaylist: true,
+        output: join(tmp, "%(title)s.%(ext)s"),
+        quiet: true,
+        noWarnings: true
+      });
       
       // List files to find subtitle files
-      const { stdout } = await execFileAsync("/bin/ls", ["-la", tmp]);
-      const lines = stdout.split("\n").filter(line => line.includes(".vtt") || line.includes(".srt"));
+      const files = await readdir(tmp);
+      const subtitleFiles = files.filter(f => f.endsWith('.vtt') || f.endsWith('.srt'));
       
-      if (lines.length > 0) {
-        // Find the best subtitle file (prefer .en.vtt or .en.srt)
-        const files = lines.map(line => {
-          const parts = line.trim().split(/\s+/);
-          return parts[parts.length - 1]; // filename is last part
-        }).filter(f => f.endsWith('.vtt') || f.endsWith('.srt'));
+      if (subtitleFiles.length > 0) {
         
         // Prefer English subtitles, then auto-generated, then any
-        const preferredFile = files.find(f => f.includes('.en.')) || 
-                             files.find(f => f.includes('auto')) ||
-                             files[0];
+        const preferredFile = subtitleFiles.find(f => f.includes('.en.')) || 
+                             subtitleFiles.find(f => f.includes('auto')) ||
+                             subtitleFiles[0];
         
         if (preferredFile) {
           const { readFile } = await import("node:fs/promises");
@@ -136,37 +134,44 @@ function parseSubtitleContent(content: string): string {
 }
 
 export async function downloadAudioAsWav(url: string): Promise<{ wavPath: string; cleanup: () => Promise<void> }> {
-  const tmp = await mkdtemp(join(tmpdir(), "shorts-analyzer-"));
+  const tmp = await mkdtemp(join(tmpdir(), "shorts-analyzer-audio-"));
   const outTemplate = join(tmp, "%(id)s.%(ext)s");
-  // Extract best audio to wav using yt-dlp + ffmpeg (ffmpeg is used internally by yt-dlp)
-  await execFileAsync("yt-dlp", [
-    url,
-    "-x",
-    "--audio-format",
-    "wav",
-    "-o",
-    outTemplate,
-    "--no-playlist",
-    "--quiet",
-    "--no-warnings",
-  ]);
+  
+  try {
+    // Extract best audio to wav using youtube-dl-exec
+    await youtubeDl(url, {
+      extractAudio: true,
+      audioFormat: "wav",
+      output: outTemplate,
+      noPlaylist: true,
+      quiet: true,
+      noWarnings: true
+    });
 
-  // We don't know the id yet reliably here; list directory and find .wav
-  const { stdout } = await execFileAsync("/bin/ls", [tmp]);
-  const wav = stdout
-    .split("\n")
-    .map((s) => s.trim())
-    .filter((s) => s.endsWith(".wav"))[0];
-  if (!wav) throw new Error("Failed to locate downloaded wav file");
-  const wavPath = join(tmp, wav);
+    // Find the downloaded wav file
+    const files = await readdir(tmp);
+    const wavFile = files.find(f => f.endsWith('.wav'));
+    
+    if (!wavFile) {
+      throw new Error("Failed to locate downloaded wav file");
+    }
+    
+    const wavPath = join(tmp, wavFile);
 
-  const cleanup = async () => {
+    const cleanup = async () => {
+      try {
+        await access(tmp).then(async () => {
+          await rm(tmp, { recursive: true, force: true });
+        });
+      } catch {}
+    };
+
+    return { wavPath, cleanup };
+  } catch (error) {
+    // Clean up temp directory on failure
     try {
-      await access(tmp).then(async () => {
-        await rm(tmp, { recursive: true, force: true });
-      });
+      await rm(tmp, { recursive: true, force: true });
     } catch {}
-  };
-
-  return { wavPath, cleanup };
+    throw error;
+  }
 }

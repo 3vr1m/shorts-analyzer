@@ -44,9 +44,23 @@ export default function NicheDiscoveryPage() {
 
     setLoading(true);
     try {
-      // Use client-side API instead of server route
-      const { discoverNicheClient } = await import("@/lib/client-apis");
-      const result = await discoverNicheClient([formData.passions], [formData.contentGoals]);
+      // Use real server API for niche discovery
+      const response = await fetch('/api/niche-suggestions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          interests: [formData.passions],
+          goals: formData.contentGoals,
+          audience: formData.targetAudience
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
 
       if (result.success) {
         setNicheResult(result.data);
@@ -55,7 +69,8 @@ export default function NicheDiscoveryPage() {
         alert(result.error || 'Failed to generate niche suggestions. Please try again.');
       }
     } catch (error) {
-      alert('Error generating niche. Please check your connection.');
+      const errorMsg = error instanceof Error ? error.message : 'Error generating niche. Please check your connection.';
+      alert(errorMsg);
     } finally {
       setLoading(false);
     }

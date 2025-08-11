@@ -161,9 +161,16 @@ export default function TrendsPage() {
         params.set('category', niche.trim());
       }
       
-      // Use client-side API instead of server route
-      const { getTrendingContentClient } = await import("@/lib/client-apis");
-      const result = await getTrendingContentClient(country, max);
+      // Use real server API for trending data
+      const apiUrl = `/api/trending?${params.toString()}`;
+      const response = await fetch(apiUrl);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
       
       if (!result.success) {
         throw new Error(result.error || 'Failed to fetch trending content');

@@ -12,9 +12,11 @@ export async function GET(request: NextRequest) {
     const country = url.searchParams.get('country') || 'US';
     const limit = parseInt(url.searchParams.get('limit') || '20');
     const platform = url.searchParams.get('platform') || 'youtube';
+    const category = url.searchParams.get('category');
+    const videoDuration = url.searchParams.get('duration') || 'short';
 
     // Log the request
-    console.log(`Trending request: ${platform} - ${country} (${limit} items)`);
+    console.log(`Trending request: ${platform} - ${country} (${limit} items)${category ? ` - niche: ${category}` : ''} - duration: ${videoDuration}`);
 
     if (platform !== 'youtube') {
       // For now, only YouTube is supported
@@ -34,9 +36,14 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Use YouTube adapter
+    // Use YouTube adapter with niche filtering
     const adapter = new YouTubeAdapter();
-    const result = await adapter.getTrendingVideos({ country, limit });
+    const result = await adapter.getTrendingVideos({ 
+      country, 
+      limit,
+      category: category || undefined,
+      duration: videoDuration as "short" | "medium" | "long"
+    });
 
     const duration = Date.now() - startTime;
     logPerformance({
