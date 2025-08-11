@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logError, logPerformance } from '@/lib/monitoring';
-import { ytSearchAndHydrate } from '@/lib/ytsearch';
-
-
+import { getYouTubeTrending } from '@/lib/youtube-trending';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -38,10 +36,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Get REAL trending videos using YouTube search
+    // Get REAL trending videos using YouTube Data API v3
     console.log(`Fetching REAL trending content for ${category || 'trending'} in ${country}`);
     
-    const searchResults = await ytSearchAndHydrate({
+    const trendingVideos = await getYouTubeTrending({
       niche: category || 'trending',
       duration: videoDuration as "short" | "medium" | "long",
       max: limit,
@@ -49,13 +47,13 @@ export async function GET(request: NextRequest) {
     });
 
     // Convert to our expected format
-    const trendingVideos = searchResults.map((video: any) => ({
+    const formattedVideos = trendingVideos.map((video) => ({
       id: video.id,
       title: video.title,
       creator: video.channel,
       channel: video.channel,
       viewCount: video.views || 0,
-      duration: video.durationSeconds || 0,
+      duration: video.duration || 0,
       likeCount: video.likeCount || 0,
       commentCount: video.commentCount || 0,
       publishedAt: video.publishedAt || new Date().toISOString(),
@@ -66,9 +64,9 @@ export async function GET(request: NextRequest) {
     }));
 
     const result = {
-      trendingVideos: trendingVideos.sort((a, b) => b.viewCount - a.viewCount),
+      trendingVideos: formattedVideos,
       meta: {
-        total: limit,
+        total: formattedVideos.length,
         country,
         platform: 'youtube',
         category: category || 'general'
