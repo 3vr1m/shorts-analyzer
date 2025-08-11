@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logError, logPerformance } from '@/lib/monitoring';
 import { analyzeTranscript, generateIdeas } from '@/lib/analysis';
 import { getSimpleVideoData, getSimpleTranscript, extractVideoId } from '@/lib/youtube-simple';
-import { getYouTubeTranscriptAPI } from '@/lib/vercel-audio';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -54,18 +53,13 @@ export async function GET(request: NextRequest) {
 
     console.log(`[METADATA] Got real data: ${metadata.title} by ${metadata.channel}`);
 
-    // Get REAL transcript - try multiple methods
+    // Get REAL transcript
     console.log('[TRANSCRIPT] Fetching real transcript...');
-    let transcript = await getSimpleTranscript(videoId);
+    const transcript = await getSimpleTranscript(videoId);
     
     if (!transcript) {
-      console.log('[TRANSCRIPT] Primary method failed, trying enhanced transcript API...');
-      transcript = await getYouTubeTranscriptAPI(videoId);
-    }
-    
-    if (!transcript) {
-      // Give helpful error with client-side audio option
-      throw new Error(`This video "${metadata.title}" does not have accessible captions. For videos without captions, you can use the client-side audio extraction feature (coming soon) or try a different YouTube video with captions enabled. Most popular YouTube videos have auto-generated captions.`);
+      // Give helpful error message
+      throw new Error(`This video "${metadata.title}" does not have accessible captions. Please try a different YouTube video that has captions/subtitles enabled. Most popular YouTube videos have auto-generated captions.`);
     }
 
     console.log(`[TRANSCRIPT] Got real transcript (${transcript.length} characters)`);
