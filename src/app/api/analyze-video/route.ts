@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logError, logPerformance } from '@/lib/monitoring';
 import { analyzeTranscript, generateIdeas } from '@/lib/analysis';
 import { getSimpleVideoData, getSimpleTranscript, extractVideoId } from '@/lib/youtube-simple';
-import { transcribeAudioFromURL } from '@/lib/audio-stream';
-import { transcribeWithAssemblyAI } from '@/lib/assemblyai';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -60,34 +58,9 @@ export async function GET(request: NextRequest) {
     let transcript = await getSimpleTranscript(videoId);
     
     if (!transcript) {
-      console.log('[TRANSCRIPT] No captions found, trying audio transcription...');
-      
-      // Try multiple audio transcription methods
-      const transcriptionMethods = [
-        { name: 'AssemblyAI', fn: () => transcribeWithAssemblyAI(videoUrl) },
-        { name: 'OpenAI Whisper Stream', fn: () => transcribeAudioFromURL(videoUrl) }
-      ];
-
-      for (const method of transcriptionMethods) {
-        try {
-          console.log(`[AUDIO] Trying ${method.name}...`);
-          transcript = await method.fn();
-          
-          if (transcript) {
-            console.log(`[AUDIO] ${method.name} succeeded: ${transcript.length} characters`);
-            break;
-          } else {
-            console.log(`[AUDIO] ${method.name} returned null, trying next method...`);
-          }
-        } catch (error) {
-          console.error(`[AUDIO] ${method.name} failed:`, error);
-          // Continue to next method
-        }
-      }
-
-      if (!transcript) {
-        throw new Error(`Could not extract transcript from video ${videoId}. No captions available and all audio transcription methods failed. The video may be private/restricted or have no audio.`);
-      }
+      // For now, give a clear error message instead of crashing
+      // TODO: Implement working audio transcription for Vercel
+      throw new Error(`This video "${metadata.title}" does not have captions available. Please try a different YouTube video that has captions/subtitles enabled. Most popular YouTube videos have auto-generated captions.`);
     }
 
     console.log(`[TRANSCRIPT] Got real transcript (${transcript.length} characters)`);
