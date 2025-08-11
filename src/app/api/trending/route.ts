@@ -1,31 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logError, logPerformance } from '@/lib/monitoring';
+import { ytSearchAndHydrate } from '@/lib/ytsearch';
 
-function getTrendingTitle(index: number): string {
-  const titles = [
-    "This Secret Trick Will Change Your Life",
-    "You Won't Believe What Happened Next",
-    "The ONE Thing Everyone Gets Wrong",
-    "Why I Quit My 9-5 Job",
-    "This Viral Hack Actually Works",
-    "The Truth About Success",
-    "How I Made $10K in One Month",
-    "The Mistake That Cost Me Everything",
-    "This Simple Change Everything",
-    "Why Everyone Is Doing This Wrong",
-    "The Secret Nobody Tells You",
-    "How to Get 1M Views Fast",
-    "This Will Blow Your Mind",
-    "The Method That Actually Works",
-    "Why This Is Going Viral",
-    "The Real Reason Behind Success",
-    "How I Cracked the Code",
-    "This Changes Everything",
-    "The Ultimate Life Hack",
-    "Why This Matters Right Now"
-  ];
-  return titles[index % titles.length];
-}
+
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -61,31 +38,32 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Generate trending videos (Vercel-compatible approach)
-    console.log(`Generating trending content for ${category || 'general'} in ${country}`);
+    // Get REAL trending videos using YouTube search
+    console.log(`Fetching REAL trending content for ${category || 'trending'} in ${country}`);
     
-    const trendingVideos = Array.from({ length: limit }, (_, i) => {
-      const videoId = `trending_${category || 'general'}_${i}`;
-      const nichePrefix = category ? `${category} ` : '';
-      
-      return {
-        id: videoId,
-        title: `${nichePrefix}${getTrendingTitle(i)}`,
-        creator: `Creator ${i + 1}`,
-        channel: `Channel ${i + 1}`,
-        viewCount: Math.floor(Math.random() * 1000000) + 10000,
-        duration: videoDuration === 'short' ? 30 + Math.floor(Math.random() * 30) : 
-                 videoDuration === 'medium' ? 60 + Math.floor(Math.random() * 240) :
-                 300 + Math.floor(Math.random() * 900),
-        likeCount: Math.floor(Math.random() * 50000),
-        commentCount: Math.floor(Math.random() * 1000),
-        publishedAt: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
-        url: `https://youtube.com/watch?v=${videoId}`,
-        platform: 'youtube',
-        hashtags: category ? [`#${category}`, '#trending'] : ['#trending', '#viral'],
-        region: country
-      };
+    const searchResults = await ytSearchAndHydrate({
+      niche: category || 'trending',
+      duration: videoDuration as "short" | "medium" | "long",
+      max: limit,
+      country: country
     });
+
+    // Convert to our expected format
+    const trendingVideos = searchResults.map((video: any) => ({
+      id: video.id,
+      title: video.title,
+      creator: video.channel,
+      channel: video.channel,
+      viewCount: video.views || 0,
+      duration: video.durationSeconds || 0,
+      likeCount: video.likeCount || 0,
+      commentCount: video.commentCount || 0,
+      publishedAt: video.publishedAt || new Date().toISOString(),
+      url: video.url,
+      platform: 'youtube',
+      hashtags: category ? [`#${category}`, '#trending'] : ['#trending', '#viral'],
+      region: country
+    }));
 
     const result = {
       trendingVideos: trendingVideos.sort((a, b) => b.viewCount - a.viewCount),

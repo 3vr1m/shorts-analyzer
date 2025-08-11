@@ -64,19 +64,8 @@ export async function getSimpleVideoData(videoId: string): Promise<SimpleVideoDa
     }
   }
 
-  // Fallback: return realistic mock data for testing
-  return {
-    id: videoId,
-    title: `YouTube Video ${videoId}`,
-    description: `This is a video analysis for ${videoId}. The content covers various topics related to short-form content creation and engagement strategies.`,
-    channelTitle: `Content Creator`,
-    channelId: `channel_${videoId}`,
-    publishedAt: new Date().toISOString(),
-    viewCount: Math.floor(Math.random() * 1000000).toString(),
-    likeCount: Math.floor(Math.random() * 50000).toString(),
-    duration: "PT45S", // 45 seconds in ISO 8601 format
-    tags: ["content", "creator", "viral", "trending"]
-  };
+  // No fallback - if YouTube API fails, we fail
+  throw new Error('YouTube API failed and no fallback data is available. Please check your YouTube API key.');
 }
 
 export async function getSimpleTranscript(videoId: string): Promise<string | null> {

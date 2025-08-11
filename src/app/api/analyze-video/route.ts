@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logError, logPerformance } from '@/lib/monitoring';
 import { analyzeTranscript, generateIdeas } from '@/lib/analysis';
+import { getSimpleVideoData, getSimpleTranscript, extractVideoId } from '@/lib/youtube-simple';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -28,36 +29,39 @@ export async function GET(request: NextRequest) {
 
     console.log(`Video analysis request for: ${videoUrl}`);
 
-    // For now, use a simple approach that definitely works on Vercel
-    // Extract video ID for reference
-    const videoIdMatch = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-    const videoId = videoIdMatch ? videoIdMatch[1] : 'demo';
+    // Extract video ID using our real function
+    const videoId = extractVideoId(videoUrl);
+    if (!videoId) {
+      throw new Error('Invalid YouTube URL format');
+    }
 
     console.log(`[ANALYSIS] Processing video: ${videoId}`);
 
-    // Create realistic sample data for testing (will be replaced with real API calls)
+    // Get REAL video metadata using YouTube Data API v3
+    console.log('[METADATA] Fetching real video data from YouTube API v3...');
+    const videoData = await getSimpleVideoData(videoId);
+    
     const metadata = {
-      id: videoId,
-      title: "Sample YouTube Video Analysis",
-      channel: "Content Creator",
-      uploader: "Content Creator",
-      view_count: 125000,
-      upload_date: new Date().toISOString(),
-      duration: 45
+      id: videoData.id,
+      title: videoData.title,
+      channel: videoData.channelTitle,
+      uploader: videoData.channelTitle,
+      views: parseInt(videoData.viewCount) || 0,
+      published: videoData.publishedAt,
+      duration: videoData.duration
     };
 
-    // Generate a realistic sample transcript for analysis
-    const transcript = `Hey everyone, welcome back to my channel! Today I want to share something incredible with you about content creation. This strategy completely changed my approach and I know it's going to help you too. 
+    console.log(`[METADATA] Got real data: ${metadata.title} by ${metadata.channel}`);
 
-First, let's talk about understanding your audience. You need to know what they're struggling with, what keeps them up at night, and what solutions they're desperately seeking. This is the foundation of everything.
+    // Get REAL transcript using youtube-transcript
+    console.log('[TRANSCRIPT] Fetching real transcript...');
+    const transcript = await getSimpleTranscript(videoId);
+    
+    if (!transcript) {
+      throw new Error('Could not extract transcript from this video. The video may not have captions available.');
+    }
 
-Second, timing is absolutely crucial. The moment you publish, the way you structure your content, and how you build anticipation - these elements can make or break your success.
-
-Finally, authenticity wins every single time. People can sense when you're being genuine versus when you're just trying to sell something. I've been testing this approach for months now and the results speak for themselves.
-
-My engagement has tripled, my audience has grown by 400%, and most importantly, I'm helping more people than ever before. If you found this valuable, make sure to follow for more insights like this. Let me know in the comments what your biggest challenge is right now. Thanks for watching!`;
-
-    console.log(`[TRANSCRIPT] Using sample transcript (${transcript.length} characters)`);
+    console.log(`[TRANSCRIPT] Got real transcript (${transcript.length} characters)`);
 
     // Check environment variables
     console.log('[ENV] Checking environment variables...');
@@ -74,7 +78,7 @@ My engagement has tripled, my audience has grown by 400%, and most importantly, 
     const analysis = await analyzeTranscript(transcript, {
       title: metadata.title,
       channel: metadata.channel,
-      views: metadata.view_count
+      views: metadata.views
     });
     console.log('[ANALYSIS] Analysis complete:', Object.keys(analysis));
 
