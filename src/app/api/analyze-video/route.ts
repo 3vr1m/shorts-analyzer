@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logError, logPerformance } from '@/lib/monitoring';
 import { analyzeTranscript, generateIdeas } from '@/lib/analysis';
 import { getSimpleVideoData, getSimpleTranscript, extractVideoId } from '@/lib/youtube-simple';
+import { transcribeAudio } from '@/lib/openai';
+import { downloadAudioAsWav } from '@/lib/ytdlp';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -53,12 +55,34 @@ export async function GET(request: NextRequest) {
 
     console.log(`[METADATA] Got real data: ${metadata.title} by ${metadata.channel}`);
 
-    // Get REAL transcript using youtube-transcript
+    // Get REAL transcript - try captions first, then audio transcription
     console.log('[TRANSCRIPT] Fetching real transcript...');
-    const transcript = await getSimpleTranscript(videoId);
+    let transcript = await getSimpleTranscript(videoId);
     
     if (!transcript) {
-      throw new Error(`Could not extract transcript from video ${videoId}. This video may not have captions available or may be private/restricted. Please try a different YouTube video with captions enabled.`);
+      console.log('[TRANSCRIPT] No captions found, downloading audio for transcription...');
+      
+      try {
+        // Download audio and transcribe with OpenAI Whisper
+        const audioResult = await downloadAudioAsWav(videoUrl);
+        console.log(`[AUDIO] Downloaded audio to: ${audioResult.wavPath}`);
+        
+        try {
+          transcript = await transcribeAudio(audioResult.wavPath);
+          console.log(`[WHISPER] Transcribed audio: ${transcript?.length || 0} characters`);
+          
+          if (!transcript) {
+            throw new Error('Failed to transcribe audio with OpenAI Whisper');
+          }
+        } finally {
+          // Always clean up the temporary audio file
+          await audioResult.cleanup();
+          console.log('[AUDIO] Cleaned up temporary audio file');
+        }
+      } catch (audioError) {
+        console.error('[AUDIO] Audio transcription failed:', audioError);
+        throw new Error(`Could not extract transcript from video ${videoId}. Both captions and audio transcription failed. The video may be private/restricted or have no audio.`);
+      }
     }
 
     console.log(`[TRANSCRIPT] Got real transcript (${transcript.length} characters)`);

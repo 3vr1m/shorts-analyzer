@@ -26,6 +26,28 @@ export const MODELS = {
   IDEAS: process.env.IDEAS_MODEL || "gpt-4o-mini",
 };
 
+// Audio transcription using OpenAI Whisper
+export async function transcribeAudio(audioPath: string): Promise<string | null> {
+  try {
+    console.log(`[WHISPER] Starting transcription of: ${audioPath}`);
+    
+    const fs = await import('fs');
+    const openaiClient = getOpenAI();
+    
+    const transcription = await openaiClient.audio.transcriptions.create({
+      file: fs.createReadStream(audioPath),
+      model: MODELS.TRANSCRIBE,
+      language: 'en', // Can be auto-detected by removing this
+    });
+
+    console.log(`[WHISPER] Transcription completed: ${transcription.text?.length || 0} characters`);
+    return transcription.text || null;
+  } catch (error) {
+    console.error('[WHISPER] Transcription failed:', error);
+    throw error;
+  }
+}
+
 /**
  * Generate niche suggestions based on user interests and goals
  */
