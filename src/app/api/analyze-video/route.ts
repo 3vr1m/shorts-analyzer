@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logError, logPerformance } from '@/lib/monitoring';
 import { analyzeTranscript, generateIdeas } from '@/lib/analysis';
 import { getSimpleVideoData, getSimpleTranscript, extractVideoId } from '@/lib/youtube-simple';
-import { startAssemblyAITranscription } from '@/lib/assemblyai';
+import { downloadAudioAsWav, transcribeAudio } from '@/lib/audio-processing';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     };
     console.log(`[DEBUG-API] ✅ Metadata obtained: ${metadata.title} by ${metadata.channel} (${metadata.views} views)`);
 
-    // If transcript is provided directly (from AssemblyAI completion), use it
+    // If transcript is provided directly, use it
     let transcript: string | null = null;
     if (providedTranscript) {
       console.log(`[DEBUG-API] 📝 Using provided transcript (${providedTranscript.length} characters)`);
@@ -59,20 +59,39 @@ export async function GET(request: NextRequest) {
       console.log(`[DEBUG-API] 📝 Transcript result: ${transcript ? `${transcript.length} characters` : 'NOT FOUND'}`);
     }
     
+    // If no transcript found, download audio and transcribe
     if (!transcript) {
-      console.log('[DEBUG-API] 🎯 No transcript found, returning helpful error message...');
+      console.log('[DEBUG-API] 🎯 No transcript found, downloading audio for transcription...');
       
-      // Return a helpful error message instead of throwing
-      return NextResponse.json({
-        success: false,
-        error: 'No transcript available',
-        message: `This video "${metadata.title}" doesn't have captions/subtitles available. Please try a different YouTube video that has captions enabled.`,
-        suggestions: [
-          'Look for videos with the "CC" (closed captions) button enabled',
-          'Most popular YouTube videos have auto-generated captions',
-          'Try news, educational, or professional content videos'
-        ]
-      }, { status: 400 });
+      try {
+        // Download audio from video
+        console.log('[DEBUG-API] 🎵 Downloading audio from video...');
+        const audioResult = await downloadAudioAsWav(videoUrl);
+        console.log(`[DEBUG-API] ✅ Audio downloaded to: ${audioResult.wavPath}`);
+        
+        // Transcribe audio using OpenAI Whisper
+        console.log('[DEBUG-API] 🗣️ Transcribing audio with OpenAI Whisper...');
+        transcript = await transcribeAudio(audioResult.wavPath);
+        console.log(`[DEBUG-API] ✅ Audio transcription complete: ${transcript?.length || 0} characters`);
+        
+        // Clean up temporary files
+        await audioResult.cleanup();
+        console.log('[DEBUG-API] 🧹 Temporary files cleaned up');
+        
+        if (!transcript) {
+          throw new Error('Audio transcription failed - no transcript generated');
+        }
+      } catch (audioError) {
+        console.error('[DEBUG-API] ❌ Audio processing failed:', audioError);
+        
+        // Return helpful error message
+        return NextResponse.json({
+          success: false,
+          error: 'Audio processing failed',
+          message: `This video "${metadata.title}" doesn't have captions and audio transcription failed. Please try a different video or contact support.`,
+          details: audioError instanceof Error ? audioError.message : 'Unknown audio processing error'
+        }, { status: 400 });
+      }
     }
 
     console.log(`[DEBUG-API] ✅ Transcript ready (${transcript.length} characters)`);
@@ -143,18 +162,14 @@ export async function GET(request: NextRequest) {
       endpoint,
       method,
       duration,
-      success: false
+      success: false,
+      platform: 'youtube'
     });
 
-    console.error('[DEBUG-API] ❌ Final error response:', error);
-    
-    return NextResponse.json(
-      { 
-        success: false,
-        error: 'Failed to analyze video',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to analyze video',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 }
