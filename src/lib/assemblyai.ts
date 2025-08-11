@@ -120,4 +120,28 @@ export async function transcribeWithAssemblyAI(youtubeUrl: string): Promise<stri
       });
 
       if (!statusResponse.ok) {
-        throw new Error(`
+        throw new Error(`Status check failed: ${statusResponse.status}`);
+      }
+
+      const status = await statusResponse.json();
+      console.log(`[ASSEMBLYAI] Status: ${status.status} (attempt ${attempts + 1})`);
+
+      if (status.status === 'completed') {
+        console.log(`[ASSEMBLYAI] Transcription completed: ${status.text?.length || 0} characters`);
+        return status.text || null;
+      } else if (status.status === 'error') {
+        throw new Error(`Transcription failed: ${status.error}`);
+      }
+
+      attempts++;
+      // Exponential backoff: 2s, 3s, 5s, 5s, 5s...
+      pollInterval = Math.min(pollInterval * 1.5, 5000);
+    }
+
+    throw new Error('Transcription timed out after 10 minutes');
+
+  } catch (error) {
+    console.error('[ASSEMBLYAI] Transcription failed:', error);
+    throw error; // Re-throw so we can handle it properly
+  }
+}

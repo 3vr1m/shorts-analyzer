@@ -102,8 +102,8 @@ export class YouTubeAdapter implements PlatformAdapter {
     try {
       // For internal API calls, we need to use the full URL or import the function directly
       // Since this is running on the server side, we'll import and call the function directly
-      const { ytSearchAndHydrate } = await import('../ytsearch');
-      const results = await ytSearchAndHydrate({
+      const { getYouTubeTrending } = await import('../youtube-trending');
+      const results = await getYouTubeTrending({
         niche: options.category || 'trending',
         duration: options.duration || 'short',
         max: options.limit || 20,
