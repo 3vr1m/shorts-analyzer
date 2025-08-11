@@ -20,7 +20,6 @@ export function MobileNav({ isOpen, setIsOpen }: MobileNavProps) {
     { href: "/trends", label: "Trending" },
     { href: "/resources", label: "Resources" },
     { href: "/monitoring", label: "Monitoring" },
-    { href: "/test-security", label: "Test Security" },
   ];
 
   return (

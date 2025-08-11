@@ -27,7 +27,6 @@ export function LayoutClient({ children }: { children: React.ReactNode }) {
               <NavLink href="/" label="Analyzer" />
               <NavLink href="/resources" label="Resources" />
               <NavLink href="/monitoring" label="Monitoring" />
-              <NavLink href="/test-security" label="Test Security" />
             </div>
           </nav>
           

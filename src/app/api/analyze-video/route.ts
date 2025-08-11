@@ -60,42 +60,19 @@ export async function GET(request: NextRequest) {
     }
     
     if (!transcript) {
-      console.log('[DEBUG-API] 🎯 No transcript found, trying AssemblyAI transcription...');
+      console.log('[DEBUG-API] 🎯 No transcript found, returning helpful error message...');
       
-      try {
-        // Start AssemblyAI transcription but don't wait for completion
-        const assemblyJob = await startAssemblyAITranscription(videoUrl);
-        
-        if (assemblyJob) {
-          console.log(`[DEBUG-API] ✅ AssemblyAI job started: ${assemblyJob.id} (status: ${assemblyJob.status})`);
-          // Return early with job info - user can poll for results
-          return NextResponse.json({
-            success: true,
-            status: 'transcribing',
-            message: 'Video is being transcribed. This may take a few minutes.',
-            assemblyJobId: assemblyJob.id,
-            metadata,
-            estimatedTime: '2-5 minutes'
-          });
-        } else {
-          console.log('[DEBUG-API] ❌ Failed to start AssemblyAI transcription');
-          throw new Error('Failed to start AssemblyAI transcription');
-        }
-      } catch (assemblyError) {
-        console.error('[DEBUG-API] ❌ AssemblyAI error:', assemblyError);
-        
-        // Provide a helpful error message with alternatives
-        const errorMessage = `This video "${metadata.title}" doesn't have captions/subtitles available, and audio transcription is currently not supported for YouTube videos. 
-
-Please try:
-1. A different YouTube video that has captions enabled
-2. Most popular YouTube videos have auto-generated captions
-3. Look for videos with the "CC" (closed captions) button enabled
-
-Error details: ${assemblyError instanceof Error ? assemblyError.message : 'Audio transcription failed'}`;
-        
-        throw new Error(errorMessage);
-      }
+      // Return a helpful error message instead of throwing
+      return NextResponse.json({
+        success: false,
+        error: 'No transcript available',
+        message: `This video "${metadata.title}" doesn't have captions/subtitles available. Please try a different YouTube video that has captions enabled.`,
+        suggestions: [
+          'Look for videos with the "CC" (closed captions) button enabled',
+          'Most popular YouTube videos have auto-generated captions',
+          'Try news, educational, or professional content videos'
+        ]
+      }, { status: 400 });
     }
 
     console.log(`[DEBUG-API] ✅ Transcript ready (${transcript.length} characters)`);

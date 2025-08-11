@@ -182,12 +182,8 @@ export default function TrendsPage() {
         // Instagram items come with trendScore
         setItems((json.data?.trendingVideos || []).sort((a: any, b: any) => (b?.trendScore || 0) - (a?.trendScore || 0)));
       } else {
-        // YouTube items have trend.score, fallback to views if not available
-        setItems((json.data?.trendingVideos || []).sort((a: any, b: any) => {
-          const scoreA = b?.trend?.score || b?.views || 0;
-          const scoreB = a?.trend?.score || a?.views || 0;
-          return scoreA - scoreB;
-        }));
+        // YouTube items are sorted by views (already sorted by API)
+        setItems(json.data?.trendingVideos || []);
       }
       
       setMeta(json.data?.meta || null);
