@@ -15,15 +15,41 @@ export async function GET(request: NextRequest) {
     
     console.log('[MINIMAL-GET] Video ID:', videoId);
     
-    // Create simple response
+    // Create response matching Analysis interface
     const result = {
       metadata: {
-        id: videoId,
-        title: "Sample Video Analysis (GET)",
+        title: "Sample Video Analysis (GET Method Works!)",
         channel: "Test Creator",
-        view_count: 50000,
+        views: 50000,
+        published: new Date().toISOString()
       },
-      message: "GET method works!"
+      transcript: "This is a test transcript to verify that GET method works perfectly on Vercel. The issue was that POST requests were failing, but GET requests work fine. Now we can proceed to fix all our APIs.",
+      analysis: {
+        hook: "🎉 GET Method Success!",
+        entryStyle: "Direct and informative",
+        niche: "Technical Debugging",
+        structure: "Problem → Solution → Success",
+        lengthSeconds: 30,
+        pace: "Fast",
+        emotion: "Excited and relieved"
+      },
+      ideas: [
+        {
+          title: "How to Debug API Issues on Vercel",
+          hook: "Ever wondered why your APIs work locally but fail on Vercel?",
+          outline: "1. Test GET vs POST methods\n2. Check environment variables\n3. Verify function configurations\n4. Test with minimal endpoints",
+          suggestedLength: 45,
+          tone: "Educational",
+          exampleTranscript: "Today I'll show you exactly how to debug API issues on Vercel. First, always test with a simple GET request..."
+        },
+        {
+          title: "The GET vs POST Mystery Solved",
+          hook: "This one configuration issue cost me hours of debugging...",
+          outline: "1. POST requests failing\n2. GET requests working\n3. The solution that saved the day",
+          suggestedLength: 30,
+          tone: "Story-driven"
+        }
+      ]
     };
     
     return NextResponse.json({

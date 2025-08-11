@@ -2,16 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logError, logPerformance } from '@/lib/monitoring';
 import { analyzeTranscript, generateIdeas } from '@/lib/analysis';
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   const startTime = Date.now();
   const endpoint = '/api/analyze-video';
-  const method = 'POST';
+  const method = 'GET';
   
   try {
-    const body = await request.json();
-    const { url } = body;
+    const url = new URL(request.url);
+    const videoUrl = url.searchParams.get('url');
 
-    if (!url) {
+    if (!videoUrl) {
       const duration = Date.now() - startTime;
       logPerformance({
         endpoint,
@@ -26,11 +26,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`Video analysis request for: ${url}`);
+    console.log(`Video analysis request for: ${videoUrl}`);
 
     // For now, use a simple approach that definitely works on Vercel
     // Extract video ID for reference
-    const videoIdMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    const videoIdMatch = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
     const videoId = videoIdMatch ? videoIdMatch[1] : 'demo';
 
     console.log(`[ANALYSIS] Processing video: ${videoId}`);

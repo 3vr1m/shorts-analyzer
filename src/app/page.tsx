@@ -121,8 +121,8 @@ export default function Home() {
     startInterval();
 
     try {
-      // Try GET method instead of POST as a test
-      const response = await fetch(`/api/minimal-test?url=${encodeURIComponent(url)}`, {
+      // Use GET method for analyze-video API
+      const response = await fetch(`/api/analyze-video?url=${encodeURIComponent(url)}`, {
         method: "GET",
       });
 
@@ -236,7 +236,7 @@ export default function Home() {
               className="flex-1 px-6 py-4 text-lg bg-card border border-default rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-colors placeholder-text-muted"
             />
             <button
-              onClick={buttonProtection.protectedClick(onAnalyze)}
+              onClick={onAnalyze}
               disabled={loading}
               className="px-8 py-4 bg-accent text-white rounded-lg font-medium text-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3"
             >
