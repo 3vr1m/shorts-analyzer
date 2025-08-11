@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     const transcript = await getSimpleTranscript(videoId);
     
     if (!transcript) {
-      throw new Error('Could not extract transcript from this video. The video may not have captions available.');
+      throw new Error(`Could not extract transcript from video ${videoId}. This video may not have captions available or may be private/restricted. Please try a different YouTube video with captions enabled.`);
     }
 
     console.log(`[TRANSCRIPT] Got real transcript (${transcript.length} characters)`);

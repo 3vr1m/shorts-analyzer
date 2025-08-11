@@ -69,36 +69,26 @@ export async function getSimpleVideoData(videoId: string): Promise<SimpleVideoDa
 }
 
 export async function getSimpleTranscript(videoId: string): Promise<string | null> {
+  console.log(`[TRANSCRIPT] Attempting to fetch transcript for video: ${videoId}`);
+  
   try {
     // Try to use youtube-transcript package (works in serverless)
     const { YoutubeTranscript } = await import('youtube-transcript');
+    console.log(`[TRANSCRIPT] YouTube transcript package loaded, fetching...`);
+    
     const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+    console.log(`[TRANSCRIPT] Raw transcript response:`, transcript?.length || 0, 'segments');
     
     if (transcript && transcript.length > 0) {
-      return transcript.map(item => item.text).join(' ');
+      const fullTranscript = transcript.map(item => item.text).join(' ');
+      console.log(`[TRANSCRIPT] Successfully extracted transcript: ${fullTranscript.length} characters`);
+      return fullTranscript;
+    } else {
+      console.warn(`[TRANSCRIPT] No transcript segments found for video ${videoId}`);
+      return null;
     }
   } catch (error) {
-    console.warn('Transcript extraction failed:', error);
+    console.error(`[TRANSCRIPT] Failed to extract transcript for ${videoId}:`, error);
+    return null;
   }
-
-  // Fallback: generate realistic transcript for testing
-  const topics = [
-    "Hey everyone, welcome back to my channel!",
-    "Today I want to share something incredible with you.",
-    "This strategy completely changed my content game.",
-    "Let me break down the three key elements you need to know.",
-    "First, understanding your audience is absolutely crucial.",
-    "You need to know what they're struggling with and what solutions they need.",
-    "Second, timing is everything in content creation.",
-    "The moment you post and how you structure your content matters.",
-    "Finally, authenticity wins every single time.",
-    "People can sense when you're being genuine versus just trying to sell.",
-    "I've been testing this approach for months now.",
-    "The results speak for themselves - engagement tripled!",
-    "If you found this helpful, make sure to follow for more tips.",
-    "Let me know in the comments what your biggest challenge is.",
-    "Thanks for watching, and I'll see you in the next one!"
-  ];
-
-  return topics.join(' ');
 }
