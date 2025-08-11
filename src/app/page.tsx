@@ -96,12 +96,15 @@ export default function Home() {
   };
 
   async function onAnalyze() {
+    console.log('[DEBUG] 🚀 onAnalyze started');
     setError(null);
     setData(null);
     if (!url) {
+      console.log('[DEBUG] ❌ No URL provided');
       setError("Please paste a video URL (YouTube, Instagram, or TikTok).");
       return;
     }
+    console.log(`[DEBUG] 📹 Analyzing URL: ${url}`);
     setLoading(true);
     setActiveStep(0);
     setProgressText(steps[0]);
@@ -109,10 +112,12 @@ export default function Home() {
     // Use a more robust interval with cleanup
     let intervalId: NodeJS.Timeout | undefined;
     const startInterval = () => {
+      console.log('[DEBUG] ⏱️ Starting progress interval');
       intervalId = setInterval(() => {
         setActiveStep((prev) => {
           const next = Math.min(prev + 1, steps.length - 1);
           setProgressText(steps[next]);
+          console.log(`[DEBUG] 📊 Progress step: ${prev} → ${next}`);
           return next;
         });
       }, 3500);
@@ -121,49 +126,64 @@ export default function Home() {
     startInterval();
 
     try {
+      console.log('[DEBUG] 🌐 Making API request to analyze-video...');
       // Use GET method for analyze-video API
       const response = await fetch(`/api/analyze-video?url=${encodeURIComponent(url)}`, {
         method: "GET",
       });
 
+      console.log(`[DEBUG] 📡 API Response status: ${response.status} ${response.statusText}`);
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
+        console.log('[DEBUG] ❌ API Error:', errorData);
         throw new Error(errorData?.error || `HTTP ${response.status}: ${response.statusText}`);
       }
 
       const result = await response.json();
+      console.log('[DEBUG] 📋 API Response data:', result);
       
       if (!result.success) {
+        console.log('[DEBUG] ❌ API returned success: false');
         throw new Error(result.error || 'Analysis failed');
       }
 
       // Check if this is a transcription job that needs polling
       if (result.status === 'transcribing' && result.assemblyJobId) {
-        console.log(`[FRONTEND] Transcription started: ${result.assemblyJobId}`);
+        console.log(`[DEBUG] 🎯 Transcription started: ${result.assemblyJobId}`);
         setProgressText("Transcribing audio... This may take 2-5 minutes");
         
         // Poll for completion
         const pollForCompletion = async () => {
+          console.log('[DEBUG] 🔄 Starting polling for transcription completion...');
           let attempts = 0;
           const maxAttempts = 60; // 5 minutes max
           
           while (attempts < maxAttempts) {
+            console.log(`[DEBUG] 🔍 Polling attempt ${attempts + 1}/${maxAttempts}`);
             await new Promise(resolve => setTimeout(resolve, 5000)); // Check every 5 seconds
             
             try {
+              console.log(`[DEBUG] 📡 Checking transcription status for ID: ${result.assemblyJobId}`);
               const statusResponse = await fetch(`/api/check-transcription?id=${result.assemblyJobId}`);
+              console.log(`[DEBUG] 📊 Status response: ${statusResponse.status}`);
+              
               if (statusResponse.ok) {
                 const statusResult = await statusResponse.json();
+                console.log('[DEBUG] 📋 Status result:', statusResult);
                 
                 if (statusResult.status === 'completed' && statusResult.transcript) {
-                  console.log('[FRONTEND] Transcription completed, getting full analysis...');
+                  console.log('[DEBUG] ✅ Transcription completed, getting full analysis...');
                   
                   // Now get the full analysis with the transcript
                   const analysisResponse = await fetch(`/api/analyze-video?url=${encodeURIComponent(url)}&transcript=${encodeURIComponent(statusResult.transcript)}`);
+                  console.log(`[DEBUG] 📡 Analysis response: ${analysisResponse.status}`);
                   
                   if (analysisResponse.ok) {
                     const analysisResult = await analysisResponse.json();
+                    console.log('[DEBUG] 📋 Analysis result:', analysisResult);
                     if (analysisResult.success && analysisResult.data) {
+                      console.log('[DEBUG] 🎉 SUCCESS! Setting data and completing...');
                       setData(analysisResult.data as Analysis);
                       setActiveStep(steps.length - 1);
                       setProgressText("Completed");
@@ -173,45 +193,58 @@ export default function Home() {
                   
                   throw new Error('Failed to analyze completed transcript');
                 } else if (statusResult.status === 'error') {
+                  console.log('[DEBUG] ❌ Transcription error:', statusResult.error);
                   throw new Error(`Transcription failed: ${statusResult.error}`);
                 }
                 
                 // Update progress text
-                setProgressText(`Transcribing... ${statusResult.status} (${attempts + 1}/${maxAttempts})`);
+                const progressText = `Transcribing... ${statusResult.status} (${attempts + 1}/${maxAttempts})`;
+                console.log(`[DEBUG] 📊 Progress update: ${progressText}`);
+                setProgressText(progressText);
+              } else {
+                console.log('[DEBUG] ❌ Status check failed:', statusResponse.status);
               }
             } catch (pollError) {
-              console.error('[FRONTEND] Polling error:', pollError);
+              console.error('[DEBUG] ❌ Polling error:', pollError);
               // Continue polling unless it's a fatal error
             }
             
             attempts++;
           }
           
+          console.log('[DEBUG] ⏰ Polling timed out after 5 minutes');
           throw new Error('Transcription timed out after 5 minutes');
         };
         
         // Start polling
+        console.log('[DEBUG] 🚀 Starting transcription polling...');
         pollForCompletion();
         return;
       }
       
       // Normal response with data
       if (result.data) {
+        console.log('[DEBUG] 🎉 Normal response with data, setting data...');
         setData(result.data as Analysis);
         setActiveStep(steps.length - 1);
         setProgressText("Completed");
       } else {
+        console.log('[DEBUG] ❌ No data in response');
         throw new Error('No analysis data received');
       }
       
     } catch (e: any) {
+      console.error('[DEBUG] ❌ Error in onAnalyze:', e);
       setError(e.message || "Something went wrong");
     } finally {
+      console.log('[DEBUG] 🧹 Cleaning up...');
       if (intervalId) {
         clearInterval(intervalId);
+        console.log('[DEBUG] ⏱️ Progress interval cleared');
       }
       setLoading(false);
       setTimeout(() => setActiveStep(-1), 1200);
+      console.log('[DEBUG] ✅ onAnalyze completed');
     }
   }
 

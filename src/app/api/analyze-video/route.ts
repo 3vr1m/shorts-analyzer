@@ -9,40 +9,34 @@ export async function GET(request: NextRequest) {
   const endpoint = '/api/analyze-video';
   const method = 'GET';
   
+  console.log(`[DEBUG-API] 🚀 ${endpoint} called with method: ${method}`);
+  
   try {
     const url = new URL(request.url);
     const videoUrl = url.searchParams.get('url');
     const providedTranscript = url.searchParams.get('transcript');
 
+    console.log(`[DEBUG-API] 📹 Video URL: ${videoUrl}`);
+    console.log(`[DEBUG-API] 📝 Provided transcript: ${providedTranscript ? 'YES' : 'NO'}`);
+
     if (!videoUrl) {
-      const duration = Date.now() - startTime;
-      logPerformance({
-        endpoint,
-        method,
-        duration,
-        success: false
-      });
-
-      return NextResponse.json(
-        { success: false, error: 'Video URL is required' },
-        { status: 400 }
-      );
+      console.log('[DEBUG-API] ❌ No video URL provided');
+      return NextResponse.json({
+        success: false,
+        error: 'Video URL is required'
+      }, { status: 400 });
     }
 
-    console.log(`Video analysis request for: ${videoUrl}`);
-
-    // Extract video ID using our real function
+    console.log(`[DEBUG-API] 🔍 Extracting video ID from: ${videoUrl}`);
     const videoId = extractVideoId(videoUrl);
-    if (!videoId) {
-      throw new Error('Invalid YouTube URL format');
+    if (!videoId) { 
+      console.log('[DEBUG-API] ❌ Invalid YouTube URL format');
+      throw new Error('Invalid YouTube URL format'); 
     }
+    console.log(`[DEBUG-API] ✅ Video ID extracted: ${videoId}`);
 
-    console.log(`[ANALYSIS] Processing video: ${videoId}`);
-
-    // Get REAL video metadata using YouTube Data API v3
-    console.log('[METADATA] Fetching real video data from YouTube API v3...');
+    console.log(`[DEBUG-API] 📊 Getting video metadata for: ${videoId}`);
     const videoData = await getSimpleVideoData(videoId);
-    
     const metadata = {
       id: videoData.id,
       title: videoData.title,
@@ -52,28 +46,28 @@ export async function GET(request: NextRequest) {
       published: videoData.publishedAt,
       duration: videoData.duration
     };
-
-    console.log(`[METADATA] Got real data: ${metadata.title} by ${metadata.channel}`);
+    console.log(`[DEBUG-API] ✅ Metadata obtained: ${metadata.title} by ${metadata.channel} (${metadata.views} views)`);
 
     // If transcript is provided directly (from AssemblyAI completion), use it
     let transcript: string | null = null;
     if (providedTranscript) {
-      console.log(`[TRANSCRIPT] Using provided transcript (${providedTranscript.length} characters)`);
+      console.log(`[DEBUG-API] 📝 Using provided transcript (${providedTranscript.length} characters)`);
       transcript = providedTranscript;
     } else {
-      console.log('[TRANSCRIPT] Fetching real transcript...');
+      console.log('[DEBUG-API] 🔍 Fetching transcript from YouTube...');
       transcript = await getSimpleTranscript(videoId);
+      console.log(`[DEBUG-API] 📝 Transcript result: ${transcript ? `${transcript.length} characters` : 'NOT FOUND'}`);
     }
     
     if (!transcript) {
-      console.log('[TRANSCRIPT] No captions found, trying AssemblyAI transcription...');
+      console.log('[DEBUG-API] 🎯 No transcript found, starting AssemblyAI transcription...');
       
       try {
         // Start AssemblyAI transcription but don't wait for completion
         const assemblyJob = await startAssemblyAITranscription(videoUrl);
         
         if (assemblyJob) {
-          console.log(`[TRANSCRIPT] AssemblyAI job started: ${assemblyJob.id}`);
+          console.log(`[DEBUG-API] ✅ AssemblyAI job started: ${assemblyJob.id} (status: ${assemblyJob.status})`);
           // Return early with job info - user can poll for results
           return NextResponse.json({
             success: true,
@@ -84,39 +78,40 @@ export async function GET(request: NextRequest) {
             estimatedTime: '2-5 minutes'
           });
         } else {
+          console.log('[DEBUG-API] ❌ Failed to start AssemblyAI transcription');
           throw new Error('Failed to start AssemblyAI transcription');
         }
       } catch (assemblyError) {
-        console.error('[TRANSCRIPT] AssemblyAI failed:', assemblyError);
+        console.error('[DEBUG-API] ❌ AssemblyAI error:', assemblyError);
         throw new Error(`Could not transcribe video "${metadata.title}". ${assemblyError instanceof Error ? assemblyError.message : 'Audio transcription failed'}. Please try a different YouTube video.`);
       }
     }
 
-    console.log(`[TRANSCRIPT] Got real transcript (${transcript.length} characters)`);
+    console.log(`[DEBUG-API] ✅ Transcript ready (${transcript.length} characters)`);
 
     // Check environment variables
-    console.log('[ENV] Checking environment variables...');
-    console.log('[ENV] OPENAI_API_KEY present:', !!process.env.OPENAI_API_KEY);
-    console.log('[ENV] NODE_ENV:', process.env.NODE_ENV);
+    console.log('[DEBUG-API] 🔑 Checking environment variables...');
+    console.log('[DEBUG-API] 🔑 OPENAI_API_KEY present:', !!process.env.OPENAI_API_KEY);
+    console.log('[DEBUG-API] 🔑 NODE_ENV:', process.env.NODE_ENV);
     
     if (!process.env.OPENAI_API_KEY) {
-      console.error('[ENV] Missing OPENAI_API_KEY');
+      console.log('[DEBUG-API] ❌ Missing OPENAI_API_KEY');
       throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.');
     }
 
     // Analyze the transcript
-    console.log('[ANALYSIS] Starting transcript analysis...');
+    console.log('[DEBUG-API] 🧠 Starting transcript analysis with OpenAI...');
     const analysis = await analyzeTranscript(transcript, {
       title: metadata.title,
       channel: metadata.channel,
       views: metadata.views
     });
-    console.log('[ANALYSIS] Analysis complete:', Object.keys(analysis));
+    console.log(`[DEBUG-API] ✅ Analysis complete:`, Object.keys(analysis));
 
     // Generate content ideas
-    console.log('[IDEAS] Generating content ideas...');
+    console.log('[DEBUG-API] 💡 Generating content ideas...');
     const ideas = await generateIdeas(analysis);
-    console.log('[IDEAS] Generated', ideas.length, 'ideas');
+    console.log(`[DEBUG-API] ✅ Generated ${ideas.length} ideas`);
 
     const result = {
       metadata,
@@ -126,6 +121,8 @@ export async function GET(request: NextRequest) {
     };
 
     const duration = Date.now() - startTime;
+    console.log(`[DEBUG-API] ⏱️ Total processing time: ${duration}ms`);
+    
     logPerformance({
       endpoint,
       method,
@@ -134,6 +131,7 @@ export async function GET(request: NextRequest) {
       platform: 'youtube'
     });
 
+    console.log('[DEBUG-API] 🎉 SUCCESS! Returning complete analysis');
     return NextResponse.json({
       success: true,
       data: result
@@ -141,6 +139,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     const duration = Date.now() - startTime;
+    console.error(`[DEBUG-API] ❌ Error after ${duration}ms:`, error);
     
     // Log the error
     logError({
@@ -159,7 +158,7 @@ export async function GET(request: NextRequest) {
       success: false
     });
 
-    console.error('Video analysis error:', error);
+    console.error('[DEBUG-API] ❌ Final error response:', error);
     
     return NextResponse.json(
       { 
