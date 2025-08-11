@@ -121,11 +121,9 @@ export default function Home() {
     startInterval();
 
     try {
-      // Call the real API route for analysis
-      const response = await fetch("/api/analyze-video", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
+      // Try GET method instead of POST as a test
+      const response = await fetch(`/api/minimal-test?url=${encodeURIComponent(url)}`, {
+        method: "GET",
       });
 
       if (!response.ok) {

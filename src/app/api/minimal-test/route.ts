@@ -1,5 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export async function GET(request: NextRequest) {
+  try {
+    console.log('[MINIMAL-GET] Starting GET test...');
+    
+    const url = new URL(request.url);
+    const videoUrl = url.searchParams.get('url') || 'https://youtu.be/E0hrcDO3Noc';
+    
+    console.log('[MINIMAL-GET] Processing URL:', videoUrl);
+    
+    // Extract video ID
+    const videoIdMatch = videoUrl?.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    const videoId = videoIdMatch ? videoIdMatch[1] : 'demo';
+    
+    console.log('[MINIMAL-GET] Video ID:', videoId);
+    
+    // Create simple response
+    const result = {
+      metadata: {
+        id: videoId,
+        title: "Sample Video Analysis (GET)",
+        channel: "Test Creator",
+        view_count: 50000,
+      },
+      message: "GET method works!"
+    };
+    
+    return NextResponse.json({
+      success: true,
+      data: result
+    });
+    
+  } catch (error) {
+    console.error('[MINIMAL-GET] Error:', error);
+    return NextResponse.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     console.log('[MINIMAL] Starting minimal test...');
