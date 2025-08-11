@@ -45,14 +45,14 @@ export default function NicheDiscoveryPage() {
     setLoading(true);
     try {
       // Use real server API for niche discovery
-      const response = await fetch('/api/niche-suggestions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          interests: [formData.passions],
-          goals: formData.contentGoals,
-          audience: formData.targetAudience
-        })
+      const params = new URLSearchParams({
+        interests: formData.passions,
+        goals: formData.contentGoals,
+        audience: formData.targetAudience
+      });
+      
+      const response = await fetch(`/api/niche-suggestions?${params.toString()}`, {
+        method: 'GET'
       });
 
       if (!response.ok) {

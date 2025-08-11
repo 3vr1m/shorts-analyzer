@@ -45,10 +45,14 @@ function ScriptWriterContent() {
 
     setLoadingSuggestions(true);
     try {
-      const response = await fetch('/api/niche-suggestions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: nicheInput.trim() })
+      const params = new URLSearchParams({
+        interests: nicheInput.trim(),
+        goals: 'content creation',
+        audience: 'general'
+      });
+      
+      const response = await fetch(`/api/niche-suggestions?${params.toString()}`, {
+        method: 'GET'
       });
 
       if (response.ok) {
@@ -68,13 +72,13 @@ function ScriptWriterContent() {
     
     setLoading(true);
     try {
-      const response = await fetch('/api/generate-script', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          niche: selectedNiche || 'general', 
-          topic: scriptTopic.trim() 
-        }),
+      const params = new URLSearchParams({
+        niche: selectedNiche || 'general',
+        topic: scriptTopic.trim()
+      });
+      
+      const response = await fetch(`/api/generate-script?${params.toString()}`, {
+        method: 'GET'
       });
       
       if (response.ok) {

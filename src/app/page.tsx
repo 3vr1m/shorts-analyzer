@@ -299,7 +299,7 @@ export default function Home() {
                 <div className="space-y-4">
                   <div>
                     <span className="text-xs font-medium text-muted uppercase tracking-wide block mb-1">Views</span>
-                    <span className="text-base font-medium accent">{data.metadata.views.toLocaleString()}</span>
+                    <span className="text-base font-medium accent">{data.metadata.views?.toLocaleString() || 'N/A'}</span>
                   </div>
                   <div>
                     <span className="text-xs font-medium text-muted uppercase tracking-wide block mb-1">Published</span>

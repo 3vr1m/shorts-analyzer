@@ -2,14 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logError, logPerformance } from '@/lib/monitoring';
 import { generateNicheSuggestions } from '@/lib/openai';
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   const startTime = Date.now();
   const endpoint = '/api/niche-suggestions';
-  const method = 'POST';
+  const method = 'GET';
   
   try {
-    const body = await request.json();
-    const { interests, goals, audience } = body;
+    const url = new URL(request.url);
+    const interests = url.searchParams.get('interests')?.split(',') || [];
+    const goals = url.searchParams.get('goals') || '';
+    const audience = url.searchParams.get('audience') || '';
 
     if (!interests || !Array.isArray(interests) || interests.length === 0) {
       const duration = Date.now() - startTime;

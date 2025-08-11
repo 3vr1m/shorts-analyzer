@@ -163,7 +163,7 @@ export default function TrendsPage() {
       
       // Use real server API for trending data
       const apiUrl = `/api/trending?${params.toString()}`;
-      const response = await fetch(apiUrl);
+      const response = await fetch(apiUrl, { method: 'GET' });
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);

@@ -38,12 +38,13 @@ export default function ScriptGeneratorPage() {
     setGeneratedScript(null)
 
     try {
-      const response = await fetch('/api/generate-script', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ niche: niche.trim(), topic: topic.trim() }),
+      const params = new URLSearchParams({
+        niche: niche.trim(),
+        topic: topic.trim()
+      });
+      
+      const response = await fetch(`/api/generate-script?${params.toString()}`, {
+        method: 'GET'
       })
 
       if (!response.ok) {

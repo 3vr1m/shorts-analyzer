@@ -2,14 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logError, logPerformance } from '@/lib/monitoring';
 import { generateScript } from '@/lib/gemini';
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   const startTime = Date.now();
   const endpoint = '/api/generate-script';
-  const method = 'POST';
+  const method = 'GET';
   
   try {
-    const body = await request.json();
-    const { niche, topic, style } = body;
+    const url = new URL(request.url);
+    const niche = url.searchParams.get('niche') || '';
+    const topic = url.searchParams.get('topic') || '';
+    const style = url.searchParams.get('style') || 'engaging';
 
     if (!niche || !topic) {
       const duration = Date.now() - startTime;
