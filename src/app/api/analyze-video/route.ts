@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     }
     
     if (!transcript) {
-      console.log('[DEBUG-API] 🎯 No transcript found, starting AssemblyAI transcription...');
+      console.log('[DEBUG-API] 🎯 No transcript found, trying AssemblyAI transcription...');
       
       try {
         // Start AssemblyAI transcription but don't wait for completion
@@ -83,7 +83,18 @@ export async function GET(request: NextRequest) {
         }
       } catch (assemblyError) {
         console.error('[DEBUG-API] ❌ AssemblyAI error:', assemblyError);
-        throw new Error(`Could not transcribe video "${metadata.title}". ${assemblyError instanceof Error ? assemblyError.message : 'Audio transcription failed'}. Please try a different YouTube video.`);
+        
+        // Provide a helpful error message with alternatives
+        const errorMessage = `This video "${metadata.title}" doesn't have captions/subtitles available, and audio transcription is currently not supported for YouTube videos. 
+
+Please try:
+1. A different YouTube video that has captions enabled
+2. Most popular YouTube videos have auto-generated captions
+3. Look for videos with the "CC" (closed captions) button enabled
+
+Error details: ${assemblyError instanceof Error ? assemblyError.message : 'Audio transcription failed'}`;
+        
+        throw new Error(errorMessage);
       }
     }
 

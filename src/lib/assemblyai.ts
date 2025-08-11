@@ -14,34 +14,19 @@ export async function startAssemblyAITranscription(youtubeUrl: string): Promise<
   }
 
   try {
-    console.log(`[ASSEMBLYAI] Starting transcription job for: ${youtubeUrl}`);
-
-    const transcriptResponse = await fetch(`${ASSEMBLYAI_BASE_URL}/transcript`, {
-      method: 'POST',
-      headers: {
-        'Authorization': ASSEMBLYAI_API_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        audio_url: youtubeUrl,
-        language_code: 'en_us',
-        speech_model: 'nano'
-      }),
-    });
-
-    if (!transcriptResponse.ok) {
-      const errorData = await transcriptResponse.json().catch(() => null);
-      throw new Error(`AssemblyAI request failed: ${transcriptResponse.status} - ${errorData?.error || 'Unknown error'}`);
-    }
-
-    const transcript = await transcriptResponse.json();
-    console.log(`[ASSEMBLYAI] Job submitted successfully: ${transcript.id}`);
-
-    return {
-      id: transcript.id,
-      status: transcript.status
-    };
-
+    console.log(`[ASSEMBLYAI] 🎯 Starting transcription for YouTube URL: ${youtubeUrl}`);
+    
+    // AssemblyAI cannot process YouTube URLs directly - they return HTML pages
+    // We need to extract the audio first or use a different approach
+    
+    // For now, return an error indicating this limitation
+    throw new Error('YouTube URLs cannot be processed directly by AssemblyAI. Audio extraction is required.');
+    
+    // TODO: Implement proper audio extraction:
+    // 1. Use youtube-dl or similar to extract audio
+    // 2. Upload audio to temporary storage
+    // 3. Send audio URL to AssemblyAI
+    
   } catch (error) {
     console.error('[ASSEMBLYAI] Failed to start transcription:', error);
     throw error;
