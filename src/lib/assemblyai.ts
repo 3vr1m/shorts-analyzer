@@ -50,31 +50,44 @@ export async function startAssemblyAITranscription(youtubeUrl: string): Promise<
 
 // Check transcription status and get results when ready
 export async function checkAssemblyAIStatus(transcriptId: string): Promise<{ status: string; text?: string; error?: string } | null> {
+  console.log(`[DEBUG-ASSEMBLYAI] 🔍 Checking status for transcript: ${transcriptId}`);
+  
   if (!ASSEMBLYAI_API_KEY) {
-    console.warn('[ASSEMBLYAI] API key not configured');
+    console.warn('[DEBUG-ASSEMBLYAI] ❌ API key not configured');
     return null;
   }
 
   try {
+    console.log(`[DEBUG-ASSEMBLYAI] 🌐 Making request to: ${ASSEMBLYAI_BASE_URL}/transcript/${transcriptId}`);
+    
     const statusResponse = await fetch(`${ASSEMBLYAI_BASE_URL}/transcript/${transcriptId}`, {
       headers: {
         'Authorization': ASSEMBLYAI_API_KEY,
       },
     });
 
+    console.log(`[DEBUG-ASSEMBLYAI] 📡 Response status: ${statusResponse.status} ${statusResponse.statusText}`);
+
     if (!statusResponse.ok) {
-      throw new Error(`Status check failed: ${statusResponse.status}`);
+      const errorText = await statusResponse.text();
+      console.error(`[DEBUG-ASSEMBLYAI] ❌ HTTP error: ${statusResponse.status} - ${errorText}`);
+      throw new Error(`Status check failed: ${statusResponse.status} - ${errorText}`);
     }
 
     const status = await statusResponse.json();
-    return {
+    console.log(`[DEBUG-ASSEMBLYAI] 📋 Response data:`, status);
+    
+    const result = {
       status: status.status,
       text: status.text,
       error: status.error
     };
+    
+    console.log(`[DEBUG-ASSEMBLYAI] ✅ Status check successful:`, result);
+    return result;
 
   } catch (error) {
-    console.error('[ASSEMBLYAI] Status check failed:', error);
+    console.error('[DEBUG-ASSEMBLYAI] ❌ Status check failed:', error);
     throw error;
   }
 }
