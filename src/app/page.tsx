@@ -238,7 +238,7 @@ export default function Home() {
       console.error('[DEBUG] ❌ Error in onAnalyze:', e);
       
       // Check if this is a "no captions" error and try client-side processing
-      if (e.message && e.message.includes("doesn't have captions")) {
+      if (e.message && (e.message.includes("doesn't have captions") || e.message.includes("Audio extraction is required"))) {
         console.log('[DEBUG] 🎯 No captions found, trying client-side audio processing...');
         setProgressText("Processing video audio... Please wait");
         
