@@ -1,12 +1,24 @@
 import OpenAI from "openai";
 
-const apiKey = process.env.OPENAI_API_KEY;
-if (!apiKey) {
-  // Don't throw at import time in Next.js; throw in runtime when used
-  // to avoid build-time crashes.
+// Create OpenAI client lazily to avoid issues in serverless environments
+let openaiInstance: OpenAI | null = null;
+
+export function getOpenAI(): OpenAI {
+  if (!openaiInstance) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error("OpenAI API key not configured");
+    }
+    openaiInstance = new OpenAI({ apiKey });
+  }
+  return openaiInstance;
 }
 
-export const openai = new OpenAI({ apiKey });
+// For backward compatibility
+export const openai = {
+  get chat() { return getOpenAI().chat; },
+  get audio() { return getOpenAI().audio; }
+};
 
 export const MODELS = {
   TRANSCRIBE: process.env.TRANSCRIBE_MODEL || "whisper-1",
@@ -22,9 +34,7 @@ export async function generateNicheSuggestions(
   goals?: string,
   audience?: string
 ) {
-  if (!apiKey) {
-    throw new Error("OpenAI API key not configured");
-  }
+  const openai = getOpenAI();
 
   const prompt = `Based on these interests: ${interests.join(', ')}
 ${goals ? `Goals: ${goals}` : ''}

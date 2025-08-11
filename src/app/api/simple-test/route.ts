@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     
     // Test if OpenAI import works
     console.log('[SIMPLE-TEST] Testing OpenAI import...');
-    const { openai, MODELS } = await import('@/lib/openai');
+    const { getOpenAI } = await import('@/lib/openai');
     console.log('[SIMPLE-TEST] OpenAI imported successfully');
     
     // Test if we can create a simple completion
@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
       throw new Error('No OpenAI API key');
     }
     
+    const openai = getOpenAI();
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
