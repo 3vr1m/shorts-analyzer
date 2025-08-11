@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logError, logPerformance } from '@/lib/monitoring';
 import { analyzeTranscript, generateIdeas } from '@/lib/analysis';
 import { getSimpleVideoData, getSimpleTranscript, extractVideoId } from '@/lib/youtube-simple';
-import { transcribeWithAssemblyAI } from '@/lib/assemblyai';
+import { startAssemblyAITranscription } from '@/lib/assemblyai';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -62,13 +62,23 @@ export async function GET(request: NextRequest) {
       console.log('[TRANSCRIPT] No captions found, trying AssemblyAI transcription...');
       
       try {
-        transcript = await transcribeWithAssemblyAI(videoUrl);
+        // Start AssemblyAI transcription but don't wait for completion
+        const assemblyJob = await startAssemblyAITranscription(videoUrl);
         
-        if (!transcript) {
-          throw new Error('AssemblyAI returned empty transcript');
+        if (assemblyJob) {
+          console.log(`[TRANSCRIPT] AssemblyAI job started: ${assemblyJob.id}`);
+          // Return early with job info - user can poll for results
+          return NextResponse.json({
+            success: true,
+            status: 'transcribing',
+            message: 'Video is being transcribed. This may take a few minutes.',
+            assemblyJobId: assemblyJob.id,
+            metadata,
+            estimatedTime: '2-5 minutes'
+          });
+        } else {
+          throw new Error('Failed to start AssemblyAI transcription');
         }
-        
-        console.log('[TRANSCRIPT] AssemblyAI transcription successful!');
       } catch (assemblyError) {
         console.error('[TRANSCRIPT] AssemblyAI failed:', assemblyError);
         throw new Error(`Could not transcribe video "${metadata.title}". ${assemblyError instanceof Error ? assemblyError.message : 'Audio transcription failed'}. Please try a different YouTube video.`);

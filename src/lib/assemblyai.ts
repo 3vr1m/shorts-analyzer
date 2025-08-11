@@ -6,6 +6,79 @@
 const ASSEMBLYAI_API_KEY = process.env.ASSEMBLYAI_API_KEY;
 const ASSEMBLYAI_BASE_URL = 'https://api.assemblyai.com/v2';
 
+// Start transcription job without waiting for completion
+export async function startAssemblyAITranscription(youtubeUrl: string): Promise<{ id: string; status: string } | null> {
+  if (!ASSEMBLYAI_API_KEY) {
+    console.warn('[ASSEMBLYAI] API key not configured');
+    return null;
+  }
+
+  try {
+    console.log(`[ASSEMBLYAI] Starting transcription job for: ${youtubeUrl}`);
+
+    const transcriptResponse = await fetch(`${ASSEMBLYAI_BASE_URL}/transcript`, {
+      method: 'POST',
+      headers: {
+        'Authorization': ASSEMBLYAI_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        audio_url: youtubeUrl,
+        language_code: 'en_us',
+        speech_model: 'nano'
+      }),
+    });
+
+    if (!transcriptResponse.ok) {
+      const errorData = await transcriptResponse.json().catch(() => null);
+      throw new Error(`AssemblyAI request failed: ${transcriptResponse.status} - ${errorData?.error || 'Unknown error'}`);
+    }
+
+    const transcript = await transcriptResponse.json();
+    console.log(`[ASSEMBLYAI] Job submitted successfully: ${transcript.id}`);
+
+    return {
+      id: transcript.id,
+      status: transcript.status
+    };
+
+  } catch (error) {
+    console.error('[ASSEMBLYAI] Failed to start transcription:', error);
+    throw error;
+  }
+}
+
+// Check transcription status and get results when ready
+export async function checkAssemblyAIStatus(transcriptId: string): Promise<{ status: string; text?: string; error?: string } | null> {
+  if (!ASSEMBLYAI_API_KEY) {
+    console.warn('[ASSEMBLYAI] API key not configured');
+    return null;
+  }
+
+  try {
+    const statusResponse = await fetch(`${ASSEMBLYAI_BASE_URL}/transcript/${transcriptId}`, {
+      headers: {
+        'Authorization': ASSEMBLYAI_API_KEY,
+      },
+    });
+
+    if (!statusResponse.ok) {
+      throw new Error(`Status check failed: ${statusResponse.status}`);
+    }
+
+    const status = await statusResponse.json();
+    return {
+      status: status.status,
+      text: status.text,
+      error: status.error
+    };
+
+  } catch (error) {
+    console.error('[ASSEMBLYAI] Status check failed:', error);
+    throw error;
+  }
+}
+
 export async function transcribeWithAssemblyAI(youtubeUrl: string): Promise<string | null> {
   if (!ASSEMBLYAI_API_KEY) {
     console.warn('[ASSEMBLYAI] API key not configured');
