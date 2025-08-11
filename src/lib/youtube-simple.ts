@@ -71,24 +71,66 @@ export async function getSimpleVideoData(videoId: string): Promise<SimpleVideoDa
 export async function getSimpleTranscript(videoId: string): Promise<string | null> {
   console.log(`[TRANSCRIPT] Attempting to fetch transcript for video: ${videoId}`);
   
+  // Use YouTube Data API v3 captions endpoint - this actually works
+  if (process.env.YOUTUBE_API_KEY) {
+    try {
+      console.log(`[TRANSCRIPT] Using YouTube Data API v3 for captions...`);
+      
+      // First, get available captions
+      const captionsResponse = await fetch(
+        `https://www.googleapis.com/youtube/v3/captions?part=snippet&videoId=${videoId}&key=${process.env.YOUTUBE_API_KEY}`
+      );
+      
+      if (captionsResponse.ok) {
+        const captionsData = await captionsResponse.json();
+        console.log(`[TRANSCRIPT] Captions available:`, captionsData.items?.length || 0);
+        
+        if (captionsData.items && captionsData.items.length > 0) {
+          // Get the first available caption (usually English)
+          const captionId = captionsData.items[0].id;
+          console.log(`[TRANSCRIPT] Using caption ID: ${captionId}`);
+          
+          // Download the actual transcript
+          const transcriptResponse = await fetch(
+            `https://www.googleapis.com/youtube/v3/captions/${captionId}?key=${process.env.YOUTUBE_API_KEY}`,
+            {
+              headers: {
+                'Accept': 'text/plain'
+              }
+            }
+          );
+          
+          if (transcriptResponse.ok) {
+            const transcriptText = await transcriptResponse.text();
+            console.log(`[TRANSCRIPT] Successfully downloaded transcript: ${transcriptText.length} characters`);
+            return transcriptText;
+          } else {
+            console.warn(`[TRANSCRIPT] Failed to download transcript: ${transcriptResponse.status}`);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn(`[TRANSCRIPT] YouTube API captions failed:`, error);
+    }
+  }
+  
+  // Fallback: Try youtube-transcript package as last resort
   try {
-    // Try to use youtube-transcript package (works in serverless)
+    console.log(`[TRANSCRIPT] Trying youtube-transcript package as fallback...`);
     const { YoutubeTranscript } = await import('youtube-transcript');
-    console.log(`[TRANSCRIPT] YouTube transcript package loaded, fetching...`);
     
     const transcript = await YoutubeTranscript.fetchTranscript(videoId);
-    console.log(`[TRANSCRIPT] Raw transcript response:`, transcript?.length || 0, 'segments');
+    console.log(`[TRANSCRIPT] Fallback transcript response:`, transcript?.length || 0, 'segments');
     
     if (transcript && transcript.length > 0) {
       const fullTranscript = transcript.map(item => item.text).join(' ');
-      console.log(`[TRANSCRIPT] Successfully extracted transcript: ${fullTranscript.length} characters`);
+      console.log(`[TRANSCRIPT] Fallback successful: ${fullTranscript.length} characters`);
       return fullTranscript;
-    } else {
-      console.warn(`[TRANSCRIPT] No transcript segments found for video ${videoId}`);
-      return null;
     }
   } catch (error) {
-    console.error(`[TRANSCRIPT] Failed to extract transcript for ${videoId}:`, error);
-    return null;
+    console.error(`[TRANSCRIPT] Fallback also failed:`, error);
   }
+  
+  console.warn(`[TRANSCRIPT] No transcript available for video ${videoId}`);
+  return null;
 }

@@ -1,81 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { transcribeAudioBlob } from '@/lib/vercel-audio';
-import { logError, logPerformance } from '@/lib/monitoring';
+import { getOpenAI } from '@/lib/openai';
 
 export async function POST(request: NextRequest) {
-  const startTime = Date.now();
-  const endpoint = '/api/transcribe-audio';
-  const method = 'POST';
-
   try {
-    console.log('[TRANSCRIBE-API] Processing audio transcription request...');
-
-    // Get the audio blob from the request
     const formData = await request.formData();
     const audioFile = formData.get('audio') as File;
-
+    
     if (!audioFile) {
-      return NextResponse.json(
-        { success: false, error: 'No audio file provided' },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        success: false,
+        error: 'No audio file provided'
+      }, { status: 400 });
     }
 
-    console.log(`[TRANSCRIBE-API] Received audio file: ${audioFile.size} bytes, type: ${audioFile.type}`);
+    console.log(`[TRANSCRIBE] Processing audio file: ${audioFile.name} (${audioFile.size} bytes)`);
 
-    // Convert File to Blob
-    const audioBlob = new Blob([await audioFile.arrayBuffer()], { type: audioFile.type });
+    // Convert File to Buffer for OpenAI
+    const arrayBuffer = await audioFile.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
 
-    // Transcribe the audio
-    const transcript = await transcribeAudioBlob(audioBlob);
-
-    if (!transcript) {
-      throw new Error('Failed to transcribe audio');
-    }
-
-    const duration = Date.now() - startTime;
-    logPerformance({
-      endpoint,
-      method,
-      duration,
-      success: true,
-      platform: 'openai-whisper'
+    // Create a Blob-like object that OpenAI can process
+    const audioBlob = new Blob([buffer], { type: audioFile.type });
+    
+    // Use OpenAI Whisper for transcription
+    const openai = getOpenAI();
+    const transcription = await openai.audio.transcriptions.create({
+      file: audioBlob as any,
+      model: 'whisper-1',
+      language: 'en',
     });
+
+    console.log(`[TRANSCRIBE] Transcription completed: ${transcription.text?.length || 0} characters`);
 
     return NextResponse.json({
       success: true,
-      transcript,
-      length: transcript.length
+      transcript: transcription.text,
+      message: 'Audio transcribed successfully'
     });
 
   } catch (error) {
-    const duration = Date.now() - startTime;
-    
-    logError({
-      endpoint,
-      method,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
-      ip: request.headers.get('x-forwarded-for') || 'unknown',
-      userAgent: request.headers.get('user-agent') || 'unknown'
-    });
-
-    logPerformance({
-      endpoint,
-      method,
-      duration,
-      success: false
-    });
-
-    console.error('[TRANSCRIBE-API] Error:', error);
-    
-    return NextResponse.json(
-      { 
-        success: false,
-        error: 'Failed to transcribe audio',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    console.error('[TRANSCRIBE] Error:', error);
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to transcribe audio',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ContentIdeas, ContentIdea } from "@/components/ui/content-ideas";
 import { useProtection, useButtonProtection } from "@/contexts/ProtectionContext";
+import { VideoProcessor } from '@/lib/video-processor';
 
 type Analysis = {
   metadata: { title: string; channel: string; views: number; published: string };
@@ -235,7 +236,66 @@ export default function Home() {
       
     } catch (e: any) {
       console.error('[DEBUG] ❌ Error in onAnalyze:', e);
-      setError(e.message || "Something went wrong");
+      
+      // Check if this is a "no captions" error and try client-side processing
+      if (e.message && e.message.includes("doesn't have captions")) {
+        console.log('[DEBUG] 🎯 No captions found, trying client-side audio processing...');
+        setProgressText("Processing video audio... Please wait");
+        
+        try {
+          // Use client-side video processor
+          const processor = new VideoProcessor();
+          const audioBlob = await processor.processVideoToMP3(url);
+          
+          console.log('[DEBUG] ✅ Audio extracted, uploading for transcription...');
+          setProgressText("Transcribing audio... Please wait");
+          
+          // Upload audio for transcription
+          const formData = new FormData();
+          formData.append('audio', audioBlob, 'audio.wav');
+          
+          const transcribeResponse = await fetch('/api/transcribe-audio', {
+            method: 'POST',
+            body: formData
+          });
+          
+          if (transcribeResponse.ok) {
+            const transcribeResult = await transcribeResponse.json();
+            if (transcribeResult.success && transcribeResult.transcript) {
+              console.log('[DEBUG] ✅ Audio transcription successful, getting full analysis...');
+              
+              // Get full analysis with the transcript
+              const analysisResponse = await fetch(`/api/analyze-video?url=${encodeURIComponent(url)}&transcript=${encodeURIComponent(transcribeResult.transcript)}`);
+              
+              if (analysisResponse.ok) {
+                const analysisResult = await analysisResponse.json();
+                if (analysisResult.success && analysisResult.data) {
+                  console.log('[DEBUG] 🎉 SUCCESS! Setting data and completing...');
+                  setData(analysisResult.data as Analysis);
+                  setActiveStep(steps.length - 1);
+                  setProgressText("Completed");
+                  processor.cleanup();
+                  return; // Success!
+                }
+              }
+            }
+          }
+          
+          throw new Error('Client-side audio processing failed');
+          
+        } catch (processingError) {
+          console.error('[DEBUG] ❌ Client-side processing failed:', processingError);
+          setError(`Audio processing failed: ${processingError instanceof Error ? processingError.message : 'Unknown error'}`);
+        } finally {
+          // Clean up processor
+          if (typeof window !== 'undefined') {
+            const processor = new VideoProcessor();
+            processor.cleanup();
+          }
+        }
+      } else {
+        setError(e.message || "Something went wrong");
+      }
     } finally {
       console.log('[DEBUG] 🧹 Cleaning up...');
       if (intervalId) {
