@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logError, logPerformance } from '@/lib/monitoring';
 import { analyzeTranscript, generateIdeas } from '@/lib/analysis';
 import { getSimpleVideoData, getSimpleTranscript, extractVideoId } from '@/lib/youtube-simple';
+import { transcribeWithAssemblyAI } from '@/lib/assemblyai';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -53,13 +54,25 @@ export async function GET(request: NextRequest) {
 
     console.log(`[METADATA] Got real data: ${metadata.title} by ${metadata.channel}`);
 
-    // Get REAL transcript
+    // Get REAL transcript - try captions first, then AssemblyAI
     console.log('[TRANSCRIPT] Fetching real transcript...');
-    const transcript = await getSimpleTranscript(videoId);
+    let transcript = await getSimpleTranscript(videoId);
     
     if (!transcript) {
-      // Give helpful error message
-      throw new Error(`This video "${metadata.title}" does not have accessible captions. Please try a different YouTube video that has captions/subtitles enabled. Most popular YouTube videos have auto-generated captions.`);
+      console.log('[TRANSCRIPT] No captions found, trying AssemblyAI transcription...');
+      
+      try {
+        transcript = await transcribeWithAssemblyAI(videoUrl);
+        
+        if (!transcript) {
+          throw new Error('AssemblyAI returned empty transcript');
+        }
+        
+        console.log('[TRANSCRIPT] AssemblyAI transcription successful!');
+      } catch (assemblyError) {
+        console.error('[TRANSCRIPT] AssemblyAI failed:', assemblyError);
+        throw new Error(`Could not transcribe video "${metadata.title}". ${assemblyError instanceof Error ? assemblyError.message : 'Audio transcription failed'}. Please try a different YouTube video.`);
+      }
     }
 
     console.log(`[TRANSCRIPT] Got real transcript (${transcript.length} characters)`);
