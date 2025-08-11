@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logError, logPerformance } from '@/lib/monitoring';
-import { analyzeTranscript, generateIdeas, transcribeAudio } from '@/lib/analysis';
-import { getVideoInfo, extractSubtitles, downloadAudioAsWav } from '@/lib/ytdlp';
+import { analyzeTranscript, generateIdeas } from '@/lib/analysis';
+import { extractVideoId, getSimpleVideoData, getSimpleTranscript } from '@/lib/youtube-simple';
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
@@ -29,46 +29,36 @@ export async function POST(request: NextRequest) {
 
     console.log(`Video analysis request for: ${url}`);
 
-    // Get video metadata using the same yt-dlp approach that works for trends
-    const metadata = await getVideoInfo(url);
-    
-    let transcript: string;
-    
-    // Step 1: Try to extract subtitles/captions (free and fast)
-    console.log(`[TRANSCRIPT] Attempting subtitle extraction for: ${url}`);
-    const subtitleTranscript = await extractSubtitles(url);
-    
-    if (subtitleTranscript) {
-      console.log(`[TRANSCRIPT] Successfully extracted subtitles`);
-      transcript = subtitleTranscript;
-    } else {
-      // Step 2: Fallback to audio transcription via OpenAI Whisper (costs money but works for any video)
-      console.log(`[TRANSCRIPT] No subtitles found, falling back to audio transcription`);
-      
-      if (!process.env.OPENAI_API_KEY) {
-        throw new Error('No subtitles available and OpenAI API key not configured for audio transcription');
-      }
-      
-      let audioCleanup: (() => Promise<void>) | null = null;
-      try {
-        // Download audio
-        const { wavPath, cleanup } = await downloadAudioAsWav(url);
-        audioCleanup = cleanup;
-        
-        // Transcribe using OpenAI Whisper
-        console.log(`[TRANSCRIPT] Transcribing audio with OpenAI Whisper`);
-        transcript = await transcribeAudio(wavPath);
-        
-        // Clean up audio file
-        await cleanup();
-        console.log(`[TRANSCRIPT] Successfully transcribed audio`);
-      } catch (error) {
-        if (audioCleanup) {
-          await audioCleanup();
-        }
-        throw new Error(`Could not extract transcript from video: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      }
+    // Extract video ID from URL
+    const videoId = extractVideoId(url);
+    if (!videoId) {
+      throw new Error('Invalid YouTube URL format');
     }
+
+    // Get video metadata using simple approach (works on Vercel)
+    console.log(`[METADATA] Fetching video data for: ${videoId}`);
+    const youtubeData = await getSimpleVideoData(videoId);
+    
+    // Get transcript using simple approach (works on Vercel)
+    console.log(`[TRANSCRIPT] Attempting transcript extraction for: ${videoId}`);
+    const transcript = await getSimpleTranscript(videoId);
+    
+    if (!transcript) {
+      throw new Error('Could not extract transcript from video. Please try another video with captions available.');
+    }
+
+    console.log(`[TRANSCRIPT] Successfully extracted transcript (${transcript.length} characters)`);
+
+    // Convert to our metadata format
+    const metadata = {
+      id: youtubeData.id,
+      title: youtubeData.title,
+      channel: youtubeData.channelTitle,
+      uploader: youtubeData.channelTitle,
+      view_count: parseInt(youtubeData.viewCount) || 0,
+      upload_date: youtubeData.publishedAt,
+      duration: 45 // Default duration
+    };
 
     // Analyze the transcript
     const analysis = await analyzeTranscript(transcript, {
