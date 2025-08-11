@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
     const videoUrl = url.searchParams.get('url');
+    const providedTranscript = url.searchParams.get('transcript');
 
     if (!videoUrl) {
       const duration = Date.now() - startTime;
@@ -54,9 +55,15 @@ export async function GET(request: NextRequest) {
 
     console.log(`[METADATA] Got real data: ${metadata.title} by ${metadata.channel}`);
 
-    // Get REAL transcript - try captions first, then AssemblyAI
-    console.log('[TRANSCRIPT] Fetching real transcript...');
-    let transcript = await getSimpleTranscript(videoId);
+    // If transcript is provided directly (from AssemblyAI completion), use it
+    let transcript: string | null = null;
+    if (providedTranscript) {
+      console.log(`[TRANSCRIPT] Using provided transcript (${providedTranscript.length} characters)`);
+      transcript = providedTranscript;
+    } else {
+      console.log('[TRANSCRIPT] Fetching real transcript...');
+      transcript = await getSimpleTranscript(videoId);
+    }
     
     if (!transcript) {
       console.log('[TRANSCRIPT] No captions found, trying AssemblyAI transcription...');

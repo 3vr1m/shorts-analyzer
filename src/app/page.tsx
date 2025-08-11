@@ -136,10 +136,74 @@ export default function Home() {
       if (!result.success) {
         throw new Error(result.error || 'Analysis failed');
       }
+
+      // Check if this is a transcription job that needs polling
+      if (result.status === 'transcribing' && result.assemblyJobId) {
+        console.log(`[FRONTEND] Transcription started: ${result.assemblyJobId}`);
+        setProgressText("Transcribing audio... This may take 2-5 minutes");
+        
+        // Poll for completion
+        const pollForCompletion = async () => {
+          let attempts = 0;
+          const maxAttempts = 60; // 5 minutes max
+          
+          while (attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 5000)); // Check every 5 seconds
+            
+            try {
+              const statusResponse = await fetch(`/api/check-transcription?id=${result.assemblyJobId}`);
+              if (statusResponse.ok) {
+                const statusResult = await statusResponse.json();
+                
+                if (statusResult.status === 'completed' && statusResult.transcript) {
+                  console.log('[FRONTEND] Transcription completed, getting full analysis...');
+                  
+                  // Now get the full analysis with the transcript
+                  const analysisResponse = await fetch(`/api/analyze-video?url=${encodeURIComponent(url)}&transcript=${encodeURIComponent(statusResult.transcript)}`);
+                  
+                  if (analysisResponse.ok) {
+                    const analysisResult = await analysisResponse.json();
+                    if (analysisResult.success && analysisResult.data) {
+                      setData(analysisResult.data as Analysis);
+                      setActiveStep(steps.length - 1);
+                      setProgressText("Completed");
+                      return; // Success!
+                    }
+                  }
+                  
+                  throw new Error('Failed to analyze completed transcript');
+                } else if (statusResult.status === 'error') {
+                  throw new Error(`Transcription failed: ${statusResult.error}`);
+                }
+                
+                // Update progress text
+                setProgressText(`Transcribing... ${statusResult.status} (${attempts + 1}/${maxAttempts})`);
+              }
+            } catch (pollError) {
+              console.error('[FRONTEND] Polling error:', pollError);
+              // Continue polling unless it's a fatal error
+            }
+            
+            attempts++;
+          }
+          
+          throw new Error('Transcription timed out after 5 minutes');
+        };
+        
+        // Start polling
+        pollForCompletion();
+        return;
+      }
       
-      setData(result.data as Analysis);
-      setActiveStep(steps.length - 1);
-      setProgressText("Completed");
+      // Normal response with data
+      if (result.data) {
+        setData(result.data as Analysis);
+        setActiveStep(steps.length - 1);
+        setProgressText("Completed");
+      } else {
+        throw new Error('No analysis data received');
+      }
+      
     } catch (e: any) {
       setError(e.message || "Something went wrong");
     } finally {
