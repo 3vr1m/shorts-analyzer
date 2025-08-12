@@ -58,10 +58,10 @@ export async function GET(request: NextRequest) {
       description: strategy.niche_description || '',
       targetAudience: strategy.target_audience || audience || 'People who will benefit most from this content',
       contentPillars: strategy.content_pillars || [],
-      contentIdeas: (strategy.content_ideas || []).map((ci) => ({
-        title: ci.title,
-        hook: ci.hook || undefined,
-        format: ci.format || 'Short-form'
+      contentIdeas: (strategy.content_ideas || []).map((ci: any) => ({
+        title: String(ci.title || ''),
+        hook: ci.hook ? String(ci.hook) : `Hook: ${String(ci.title || 'Quick idea')}`,
+        format: String(ci.format || 'Short-form')
       })),
       trendingTopics: strategy.trending_topics || []
     };
