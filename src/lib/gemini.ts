@@ -275,11 +275,12 @@ Output JSON ONLY with: {"niches":[{"name":"string"}...]}`;
 
 // Full niche strategy generator (returns structured object)
 export async function generateNicheStrategy(input: string): Promise<{
+  niche_name?: string;
   niche_description: string;
   target_audience: string;
   trending_topics: string[];
   content_pillars: string[];
-  content_ideas: { title: string; pillar: string; format: string }[];
+  content_ideas: { title: string; pillar: string; format: string; hook?: string }[];
 }> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('Gemini API key not configured');
@@ -288,12 +289,26 @@ export async function generateNicheStrategy(input: string): Promise<{
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: modelName });
 
-  const prompt = `You are a senior content strategist and creative visionary with deep social media expertise.
-Analyze the user's brief and output a complete content strategy as a SINGLE JSON object ONLY with keys: {"niche_description","target_audience","trending_topics","content_pillars","content_ideas"}.
+  const prompt = `You are a senior content strategist.
+Analyze the user's brief and output a COMPLETE strategy as a SINGLE JSON object ONLY with keys:
+{"niche_name","niche_description","target_audience","trending_topics","content_pillars","content_ideas"}.
 
-User brief:\n${input}
+Brief:\n${input}
 
-Requirements:\n1) niche_description: one sentence; topic + audience + goal/angle.\n2) target_audience: one detailed paragraph (interests, pain points, motivations, what content they seek).\n3) trending_topics: 5-7 specific, highly searchable keywords for this niche.\n4) content_pillars: 3 distinct pillars that cover the niche broadly.\n5) content_ideas: 6 items; each: {"title":"...","pillar":"...","format":"Short-form"}.\nReturn JSON only.`;
+Rules:
+- Do NOT copy the user's phrasing; synthesize a crisp brandable niche name.
+- niche_name: 2-5 words, Title Case, e.g., "Vintage Upcycling Fashion".
+- niche_description: one sentence stating topic + audience + goal.
+- target_audience: 2-3 sentences covering interests, pain points, motivations, and what they seek.
+- trending_topics: 6-8 items, each 1-3 words, Title Case, highly searchable (no filler, no duplicates).
+- content_pillars: exactly 3 items, 2-4 words each, Title Case, distinct but cohesive.
+- content_ideas: exactly 6 items; each object fields:
+  - title: 6-12 words, clickworthy, no clickbait clichés, no "matters right now".
+  - hook: a 1-sentence hook to open the video.
+  - pillar: must match one of content_pillars.
+  - format: one of ["Hook","Tutorial","Tip List","Before/After","Storytime","Skit"].
+
+Return JSON ONLY.`;
 
   const result = await model.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }]}],
@@ -308,6 +323,7 @@ Requirements:\n1) niche_description: one sentence; topic + audience + goal/angle
   const parsed = JSON.parse(text);
   // Normalize structure
   return {
+    niche_name: parsed.niche_name ? String(parsed.niche_name) : undefined,
     niche_description: String(parsed.niche_description || ''),
     target_audience: String(parsed.target_audience || ''),
     trending_topics: Array.isArray(parsed.trending_topics) ? parsed.trending_topics.map(String) : [],
@@ -315,8 +331,9 @@ Requirements:\n1) niche_description: one sentence; topic + audience + goal/angle
     content_ideas: Array.isArray(parsed.content_ideas)
       ? parsed.content_ideas.map((ci: any) => ({
           title: String(ci.title || ''),
+          hook: ci.hook ? String(ci.hook) : undefined,
           pillar: String(ci.pillar || ''),
-          format: String(ci.format || 'Short-form')
+          format: String(ci.format || 'Tutorial')
         }))
       : []
   };

@@ -54,13 +54,13 @@ export async function GET(request: NextRequest) {
     }
 
     const nicheResult = {
-      niche: (strategy.niche_description || '').split(' aimed at ')[0] || 'Your Niche',
+      niche: strategy.niche_name || (strategy.niche_description || '').split(' aimed at ')[0] || 'Your Niche',
       description: strategy.niche_description || '',
       targetAudience: strategy.target_audience || audience || 'People who will benefit most from this content',
       contentPillars: strategy.content_pillars || [],
       contentIdeas: (strategy.content_ideas || []).map((ci) => ({
         title: ci.title,
-        hook: `Why ${ci.title} matters right now`,
+        hook: ci.hook || undefined,
         format: ci.format || 'Short-form'
       })),
       trendingTopics: strategy.trending_topics || []
