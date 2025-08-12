@@ -297,7 +297,7 @@ Brief:\n${input}
 Rules:
 - Do NOT copy the user's phrasing; synthesize a crisp brandable niche name.
 - niche_name: 2-5 words, Title Case, e.g., "Vintage Upcycling Fashion".
-- niche_description: one sentence stating topic + audience + goal.
+- niche_description: 1-2 sentences. Clearly explain what the niche is and why it matters now. Where helpful, include ONE of: a tiny historical/context touchpoint, a note on trend/saturation (e.g., growing/under-served), or a distinctive angle that differentiates the creator. Do NOT duplicate the target audience details here.
 - target_audience: 2-3 sentences covering interests, pain points, motivations, and what they seek.
 - trending_topics: 6-8 items, each 1-3 words, Title Case, highly searchable (no filler, no duplicates).
 - content_pillars: exactly 3 items, 2-4 words each, Title Case, distinct but cohesive.
