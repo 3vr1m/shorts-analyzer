@@ -97,7 +97,7 @@ Focus on ${niche} audience and make ${topic} relatable and actionable.`;
  * Makes the actual API call to Gemini
  */
 async function fetchGeminiResponse(apiKey: string, prompt: string): Promise<any> {
-  const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp';
+  const model = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
   
   const response = await fetch(`${endpoint}?key=${apiKey}`, {
@@ -230,10 +230,24 @@ Examples of good niches: "Productivity hacks for students", "Quick healthy break
     }
 
     // Split by lines and clean up
+    // Prefer JSON if model returned JSON
+    const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (Array.isArray(parsed.niches)) {
+          return parsed.niches.map((n: any) => String(n.name || n));
+        }
+        if (Array.isArray(parsed.suggestions)) {
+          return parsed.suggestions.map((s: any) => String(s.name || s));
+        }
+      } catch {}
+    }
+    // Fallback: parse line list
     const suggestions = generatedText
       .split('\n')
-      .map((line: string) => line.trim())
-      .filter((line: string) => line.length > 0 && !line.match(/^\d+\./))
+      .map((line: string) => line.replace(/^[-*\d.\s]+/, '').trim())
+      .filter((line: string) => line.length > 0)
       .slice(0, 10);
 
     return suggestions;

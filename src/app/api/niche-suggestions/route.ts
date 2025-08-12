@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logError, logPerformance } from '@/lib/monitoring';
-import { generateNicheSuggestions } from '@/lib/openai';
+import { generateNicheSuggestions as generateGeminiNiches } from '@/lib/gemini';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -9,7 +9,8 @@ export async function GET(request: NextRequest) {
   
   try {
     const url = new URL(request.url);
-    const interests = url.searchParams.get('interests')?.split(',') || [];
+    const interestsRaw = url.searchParams.get('interests') || '';
+    const interests = interestsRaw ? interestsRaw.split(',') : [];
     const goals = url.searchParams.get('goals') || '';
     const audience = url.searchParams.get('audience') || '';
 
@@ -30,8 +31,10 @@ export async function GET(request: NextRequest) {
 
     console.log(`Niche suggestions request: ${interests.join(', ')}`);
 
-    // Generate niche suggestions using OpenAI
-    const suggestions = await generateNicheSuggestions(interests, goals, audience);
+    // Generate niche suggestions using Gemini 2.0 Flash
+    const suggestions = await generateGeminiNiches(
+      `${interests.join(', ')}${goals ? ` | goals: ${goals}` : ''}${audience ? ` | audience: ${audience}` : ''}`
+    );
 
     const duration = Date.now() - startTime;
     logPerformance({
@@ -39,7 +42,7 @@ export async function GET(request: NextRequest) {
       method,
       duration,
       success: true,
-      platform: 'openai'
+      platform: 'gemini'
     });
 
     return NextResponse.json({
