@@ -4,6 +4,7 @@ import { mkdtemp, writeFile, unlink } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import OpenAI from 'openai';
+import { createReadStream } from 'fs';
 
 const execFileAsync = promisify(execFile);
 
@@ -88,25 +89,19 @@ export async function transcribeAudio(audioPath: string): Promise<string> {
     
     const openai = getOpenAIClient();
     
-    // Read audio file
-    const audioBuffer = await Bun.file(audioPath).arrayBuffer();
-    
-    // Create form data for OpenAI API
-    const formData = new FormData();
-    formData.append('file', new Blob([audioBuffer], { type: 'audio/wav' }), 'audio.wav');
-    formData.append('model', 'whisper-1');
-    formData.append('response_format', 'text');
-    
+    // Read audio file as Node stream
+    const fileStream = createReadStream(audioPath);
+
     console.log(`[TRANSCRIBE] 📤 Sending to OpenAI Whisper API...`);
-    
-    // Call OpenAI Whisper API
+
+    // Call OpenAI Whisper API with file stream (no FormData needed)
     const response = await openai.audio.transcriptions.create({
-      file: new File([audioBuffer], 'audio.wav', { type: 'audio/wav' }),
+      file: fileStream as any,
       model: 'whisper-1',
       response_format: 'text'
     });
     
-    const transcript = response as string;
+    const transcript = response as unknown as string;
     
     console.log(`[TRANSCRIBE] ✅ Transcription complete: ${transcript.length} characters`);
     console.log(`[TRANSCRIBE] 📝 Preview: ${transcript.substring(0, 100)}...`);
