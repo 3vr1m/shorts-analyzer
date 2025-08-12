@@ -97,7 +97,8 @@ Focus on ${niche} audience and make ${topic} relatable and actionable.`;
  * Makes the actual API call to Gemini
  */
 async function fetchGeminiResponse(apiKey: string, prompt: string): Promise<any> {
-  const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+  const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp';
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
   
   const response = await fetch(`${endpoint}?key=${apiKey}`, {
     method: 'POST',
