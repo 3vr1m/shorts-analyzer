@@ -36,6 +36,36 @@ export async function GET(request: NextRequest) {
       `${interests.join(', ')}${goals ? ` | goals: ${goals}` : ''}${audience ? ` | audience: ${audience}` : ''}`
     );
 
+    // Build NicheResult object expected by frontend
+    const primary = suggestions[0] || interests[0] || 'Your Niche';
+    const contentPillars = (suggestions.slice(0, 3).length === 3
+      ? suggestions.slice(0, 3)
+      : [
+          `${primary} basics`,
+          `${primary} tips`,
+          `${primary} mistakes`
+        ]).map((s) => s.trim());
+
+    const contentIdeas = (suggestions.slice(0, 3).length
+      ? suggestions.slice(0, 3)
+      : contentPillars).map((s) => ({
+        title: s,
+        hook: `Why ${s} matters right now`,
+        format: 'Short-form'
+      }));
+
+    const nicheResult = {
+      niche: primary,
+      description:
+        goals || audience
+          ? `A niche around ${primary} aimed at ${audience || 'your target audience'} with the goal to ${goals || 'grow engagement'}.`
+          : `A focused niche around ${primary} with high short-form potential.`,
+      targetAudience: audience || `People interested in ${primary.toLowerCase()}`,
+      contentPillars,
+      contentIdeas,
+      trendingTopics: suggestions.slice(0, 5)
+    };
+
     const duration = Date.now() - startTime;
     logPerformance({
       endpoint,
@@ -47,7 +77,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: suggestions
+      data: nicheResult
     });
 
   } catch (error) {
