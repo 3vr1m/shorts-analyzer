@@ -322,7 +322,7 @@ Return JSON ONLY.`;
   const text = result.response.text();
   const parsed = JSON.parse(text);
   // Normalize structure
-  return {
+  let result = {
     niche_name: parsed.niche_name ? String(parsed.niche_name) : undefined,
     niche_description: String(parsed.niche_description || ''),
     target_audience: String(parsed.target_audience || ''),
@@ -337,6 +337,30 @@ Return JSON ONLY.`;
         }))
       : []
   };
+
+  // Anti-echo: if any long phrase (>= 5 words) from input is copied verbatim in name/description, rewrite once
+  const lcInput = input.toLowerCase();
+  const copied = (s: string) => s && lcInput.includes(s.toLowerCase());
+  const suspicious =
+    (result.niche_name && copied(result.niche_name)) ||
+    (result.niche_description && copied(result.niche_description));
+  if (suspicious) {
+    const rewritePrompt = `Rewrite the following JSON to avoid echoing the user's phrasing. Create a brandable niche_name (2-5 words, Title Case) and concise niche_description. Do NOT copy any phrases from the source brief. Return JSON ONLY.
+
+Source brief:\n${input}
+
+JSON to rewrite:\n${JSON.stringify(result)}\n`;
+    try {
+      const r = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: rewritePrompt }]}],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 1024, responseMimeType: 'application/json' }
+      });
+      const rewritten = JSON.parse(r.response.text());
+      result.niche_name = rewritten.niche_name ? String(rewritten.niche_name) : result.niche_name;
+      result.niche_description = rewritten.niche_description ? String(rewritten.niche_description) : result.niche_description;
+    } catch {}
+  }
+  return result;
 }
 
 /**
