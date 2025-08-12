@@ -43,10 +43,28 @@ export async function downloadAudioAsWav(videoUrl: string): Promise<AudioResult>
     
       // Build yt-dlp args with cookies if available
       const cookiesPath = '/app/youtube-cookies.txt';
+      let cookiesArg: string[] = [];
+      try {
+        if (existsSync(cookiesPath)) {
+          const cookiesTmp = join(tempDir, 'cookies.txt');
+          await writeFile(cookiesTmp, await (await import('fs/promises')).readFile(cookiesPath), { mode: 0o644 });
+          cookiesArg = ['--cookies', cookiesTmp];
+          console.log(`[AUDIO] 🍪 Using cookies file: ${cookiesTmp}`);
+        }
+      } catch (e) {
+        console.warn('[AUDIO] ⚠️ Failed to prepare cookies file:', e);
+      }
+
       const args = [
-        ...(existsSync(cookiesPath) ? ['--cookies', cookiesPath] : []),
+        ...cookiesArg,
         '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0 Safari/537.36',
         '--referer', 'https://www.youtube.com/',
+        '--force-ipv4',
+        '--sleep-interval', '1',
+        '--max-sleep-interval', '5',
+        '--retries', '3',
+        '--fragment-retries', '3',
+        '--extractor-args', 'youtube:player_client=android',
         '--extract-audio',
         '--audio-format', 'wav',
         '--audio-quality', '0', // Best quality
