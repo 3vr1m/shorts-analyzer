@@ -160,27 +160,37 @@ function parseGeminiResponse(response: any): GeminiScriptResponse {
 
     // Try to extract JSON from the response
     const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('No valid JSON found in Gemini response');
+    let parsedScript: any | null = null;
+    if (jsonMatch) {
+      try {
+        parsedScript = JSON.parse(jsonMatch[0]);
+      } catch {}
     }
 
-    const parsedScript = JSON.parse(jsonMatch[0]);
-
-    // Validate the required fields
-    if (!parsedScript.title || !parsedScript.hooks || !parsedScript.script || !parsedScript.cta) {
-      throw new Error('Missing required fields in generated script');
+    // If JSON parsed correctly and has expected fields
+    if (parsedScript && parsedScript.title && parsedScript.hooks && parsedScript.script) {
+      return {
+        title: String(parsedScript.title),
+        hooks: parsedScript.hooks.map(String),
+        script: String(parsedScript.script),
+        cta: String(parsedScript.cta || '')
+      };
     }
 
-    // Ensure hooks is an array with at least 3 items
-    if (!Array.isArray(parsedScript.hooks) || parsedScript.hooks.length < 3) {
-      throw new Error('Invalid hooks format - must be an array with at least 3 items');
+    // Fallback: build a script object from plain text
+    const lines = generatedText.split('\n').map((l: string) => l.trim()).filter(Boolean);
+    const title = lines[0]?.replace(/^#+\s*/, '') || 'Generated Script';
+    const hooks: string[] = [];
+    for (const l of lines.slice(1)) {
+      if (hooks.length >= 5) break;
+      if (/^[-*•]/.test(l) || l.length <= 120) hooks.push(l.replace(/^[-*•]\s*/, ''));
     }
-
+    const ctaLine = lines.find((l: string) => /call\s*to\s*action|cta/i.test(l)) || '';
     return {
-      title: String(parsedScript.title),
-      hooks: parsedScript.hooks.map(String),
-      script: String(parsedScript.script),
-      cta: String(parsedScript.cta)
+      title,
+      hooks: hooks.length ? hooks : ["Here's why this matters", "Don’t miss this part", "The quick win"],
+      script: generatedText,
+      cta: ctaLine
     };
 
   } catch (error) {
