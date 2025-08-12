@@ -272,6 +272,65 @@ Output JSON ONLY with: {"niches":[{"name":"string"}...]}`;
   }
 }
 
+// Full niche strategy generator (returns structured object)
+export async function generateNicheStrategy(input: string): Promise<{
+  niche_description: string;
+  target_audience: string;
+  trending_topics: string[];
+  content_pillars: string[];
+  content_ideas: { title: string; pillar: string; format: string }[];
+}> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('Gemini API key not configured');
+
+  const prompt = `You are a senior content strategist and creative visionary.
+Analyze the user's brief below and output a complete, actionable content strategy as a single JSON object only.
+
+User brief:
+${input}
+
+Generate:
+1) niche_description: one sentence; clearly state topic, audience, goal/angle.
+2) target_audience: one detailed paragraph (interests, pain points, motivations, what content they seek).
+3) trending_topics: 5-7 popular, highly searchable keywords or topics in this niche.
+4) content_pillars: 3 distinct pillars that cover the niche broadly and cohesively.
+5) content_ideas: 6 short-form ideas (JSON objects) with keys: title, pillar, format ("Short-form").
+
+Output JSON ONLY with keys: {"niche_description","target_audience","trending_topics","content_pillars","content_ideas"}`;
+
+  const response = await fetchGeminiResponse(apiKey, prompt);
+  const text = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+  // Try JSON block parse
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      // Basic normalization
+      parsed.trending_topics = Array.isArray(parsed.trending_topics) ? parsed.trending_topics : [];
+      parsed.content_pillars = Array.isArray(parsed.content_pillars) ? parsed.content_pillars : [];
+      parsed.content_ideas = Array.isArray(parsed.content_ideas) ? parsed.content_ideas : [];
+      return parsed;
+    } catch {}
+  }
+
+  // Fallback: construct minimal viable structure from plaintext
+  const lines = text.split('\n').map((l: string) => l.trim()).filter(Boolean);
+  const fallback = {
+    niche_description: lines.find(l => l.length > 20) || 'A focused niche with short-form potential.',
+    target_audience: lines.slice(1, 4).join(' ') || 'People actively seeking concise, practical content in this area.',
+    trending_topics: lines.filter(l => l.length < 60).slice(0, 7),
+    content_pillars: lines.filter(l => l.length < 40).slice(0, 3),
+    content_ideas: [] as { title: string; pillar: string; format: string }[],
+  };
+  const pillars = fallback.content_pillars.length ? fallback.content_pillars : ['Pillar A', 'Pillar B', 'Pillar C'];
+  for (let i = 0; i < 6; i++) {
+    const p = pillars[i % pillars.length];
+    fallback.content_ideas.push({ title: `Why ${p} matters right now`, pillar: p, format: 'Short-form' });
+  }
+  return fallback;
+}
+
 /**
  * Fallback function for when Gemini API is unavailable
  * This provides a basic script structure that can be enhanced

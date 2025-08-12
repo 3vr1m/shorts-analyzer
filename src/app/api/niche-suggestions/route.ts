@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logError, logPerformance } from '@/lib/monitoring';
-import { generateNicheSuggestions as generateGeminiNiches } from '@/lib/gemini';
+import { generateNicheStrategy } from '@/lib/gemini';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -31,39 +31,21 @@ export async function GET(request: NextRequest) {
 
     console.log(`Niche suggestions request: ${interests.join(', ')}`);
 
-    // Generate niche suggestions using Gemini 2.0 Flash
-    const suggestions = await generateGeminiNiches(
-      `${interests.join(', ')}${goals ? ` | goals: ${goals}` : ''}${audience ? ` | audience: ${audience}` : ''}`
-    );
-
-    // Build NicheResult object expected by frontend
-    const primary = suggestions[0] || interests[0] || 'Your Niche';
-    const contentPillars = (suggestions.slice(0, 3).length === 3
-      ? suggestions.slice(0, 3)
-      : [
-          `${primary} basics`,
-          `${primary} tips`,
-          `${primary} mistakes`
-        ]).map((s) => s.trim());
-
-    const contentIdeas = (suggestions.slice(0, 3).length
-      ? suggestions.slice(0, 3)
-      : contentPillars).map((s) => ({
-        title: s,
-        hook: `Why ${s} matters right now`,
-        format: 'Short-form'
-      }));
+    // Generate full strategy via Gemini and adapt to frontend shape
+    const brief = `Passions/Interests: ${interests.join(', ')}\nGoals: ${goals}\nAudience: ${audience}`;
+    const strategy = await generateNicheStrategy(brief);
 
     const nicheResult = {
-      niche: primary,
-      description:
-        goals || audience
-          ? `A niche around ${primary} aimed at ${audience || 'your target audience'} with the goal to ${goals || 'grow engagement'}.`
-          : `A focused niche around ${primary} with high short-form potential.`,
-      targetAudience: audience || `People interested in ${primary.toLowerCase()}`,
-      contentPillars,
-      contentIdeas,
-      trendingTopics: suggestions.slice(0, 5)
+      niche: (strategy.niche_description || '').split(' aimed at ')[0] || 'Your Niche',
+      description: strategy.niche_description || '',
+      targetAudience: strategy.target_audience || audience || 'People who will benefit most from this content',
+      contentPillars: strategy.content_pillars || [],
+      contentIdeas: (strategy.content_ideas || []).map((ci) => ({
+        title: ci.title,
+        hook: `Why ${ci.title} matters right now`,
+        format: ci.format || 'Short-form'
+      })),
+      trendingTopics: strategy.trending_topics || []
     };
 
     const duration = Date.now() - startTime;
