@@ -217,17 +217,10 @@ export async function generateNicheSuggestions(input: string): Promise<string[]>
     }
 
     // Create prompt for niche suggestions
-    const prompt = `Based on the input "${input}", generate 8-10 specific content niche suggestions that would be perfect for short-form video content (YouTube Shorts, Instagram Reels, TikTok). 
-
-Focus on niches that are:
-- Trending and engaging
-- Suitable for short-form content
-- Have good monetization potential
-- Appeal to specific audiences
-
-Return only the niche names, one per line, without numbers or bullet points. Be specific and actionable.
-
-Examples of good niches: "Productivity hacks for students", "Quick healthy breakfast recipes", "Home workout routines under 5 minutes"`;
+    const prompt = `You are a senior content strategist.
+Based on this brief: ${input}
+Generate 10 sharp, marketable NICHES (not video titles). Each niche should be 3-6 words, reflect a clear audience + angle, and be suitable for short-form content.
+Output JSON ONLY with: {"niches":[{"name":"string"}...]}`;
 
     // Make API call to Gemini
     const response = await fetchGeminiResponse(apiKey, prompt);

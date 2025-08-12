@@ -30,34 +30,33 @@ export function ContentIdeas({
   className = ""
 }: ContentIdeasProps) {
   return (
-    <div className={`bg-card border border-default rounded-lg p-8 ${className}`}>
-      <h3 className="text-2xl font-semibold mb-8 font-inter text-purple-600 dark:text-purple-400">
+    <div className={`bg-transparent ${className}`}>
+      <h3 className="text-2xl font-semibold mb-6 font-inter text-foreground">
         {title}
       </h3>
-      
-      <div className="space-y-6">
-        {ideas.map((idea, index) => (
-          <div key={index} className="border border-default rounded-lg p-5 bg-card">
+      <div className="flex gap-4 overflow-x-auto pb-2 snap-x">
+        {ideas.slice(0, 6).map((idea, index) => (
+          <div key={index} className="min-w-[320px] max-w-[360px] snap-start border-2 border-default rounded-xl p-6 bg-gray-900 text-white dark:bg-white dark:text-gray-900 shadow-lg">
             <div className="flex items-start justify-between mb-4">
-              <h4 className="font-bold text-purple-600 dark:text-purple-400 text-xl flex-1">{idea.title}</h4>
+              <h4 className="font-bold text-xl flex-1">{idea.title}</h4>
               <div className="flex gap-2 ml-4">
                 {idea.suggestedLength && (
-                  <span className="text-base bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4 py-2 rounded-full font-bold shadow-lg">
+                  <span className="text-base bg-white/20 dark:bg-gray-900/20 px-4 py-2 rounded-full font-bold">
                     {idea.suggestedLength}s
                   </span>
                 )}
                 {idea.tone && (
-                  <span className="text-base bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4 py-2 rounded-full capitalize font-bold shadow-lg">
+                  <span className="text-base bg-white/20 dark:bg-gray-900/20 px-4 py-2 rounded-full capitalize font-bold">
                     {idea.tone}
                   </span>
                 )}
               </div>
             </div>
             
-            <p className="text-lg text-purple-600 dark:text-purple-400 italic mb-4 leading-relaxed font-medium">"{idea.hook}"</p>
+            <p className="text-lg italic mb-4 leading-relaxed font-medium opacity-90">"{idea.hook}"</p>
             
             {showFormat && idea.format && (
-              <span className="inline-block px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-lg rounded-lg font-bold mb-4 shadow-lg">
+              <span className="inline-block px-6 py-3 bg-white text-gray-900 dark:bg-gray-900 dark:text-white text-lg rounded-lg font-bold mb-4">
                 {idea.format}
               </span>
             )}
