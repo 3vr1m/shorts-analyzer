@@ -315,12 +315,12 @@ Output JSON ONLY with keys: {"niche_description","target_audience","trending_top
   }
 
   // Fallback: construct minimal viable structure from plaintext
-  const lines = text.split('\n').map((l: string) => l.trim()).filter(Boolean);
+  const lines: string[] = text.split('\n').map((l: string) => l.trim()).filter(Boolean) as string[];
   const fallback = {
-    niche_description: lines.find(l => l.length > 20) || 'A focused niche with short-form potential.',
+    niche_description: lines.find((l: string) => l.length > 20) || 'A focused niche with short-form potential.',
     target_audience: lines.slice(1, 4).join(' ') || 'People actively seeking concise, practical content in this area.',
-    trending_topics: lines.filter(l => l.length < 60).slice(0, 7),
-    content_pillars: lines.filter(l => l.length < 40).slice(0, 3),
+    trending_topics: lines.filter((l: string) => l.length < 60).slice(0, 7),
+    content_pillars: lines.filter((l: string) => l.length < 40).slice(0, 3),
     content_ideas: [] as { title: string; pillar: string; format: string }[],
   };
   const pillars = fallback.content_pillars.length ? fallback.content_pillars : ['Pillar A', 'Pillar B', 'Pillar C'];
