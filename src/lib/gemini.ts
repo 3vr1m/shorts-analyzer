@@ -1,3 +1,4 @@
+import { GoogleGenerativeAI } from '@google/generative-ai';
 /**
  * Gemini AI API integration for script generation
  * Provides AI-powered script creation for influencer content
@@ -283,52 +284,42 @@ export async function generateNicheStrategy(input: string): Promise<{
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('Gemini API key not configured');
 
-  const prompt = `You are a senior content strategist and creative visionary.
-Analyze the user's brief below and output a complete, actionable content strategy as a single JSON object only.
+  const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: modelName });
 
-User brief:
-${input}
+  const prompt = `You are a senior content strategist and creative visionary with deep social media expertise.
+Analyze the user's brief and output a complete content strategy as a SINGLE JSON object ONLY with keys: {"niche_description","target_audience","trending_topics","content_pillars","content_ideas"}.
 
-Generate:
-1) niche_description: one sentence; clearly state topic, audience, goal/angle.
-2) target_audience: one detailed paragraph (interests, pain points, motivations, what content they seek).
-3) trending_topics: 5-7 popular, highly searchable keywords or topics in this niche.
-4) content_pillars: 3 distinct pillars that cover the niche broadly and cohesively.
-5) content_ideas: 6 short-form ideas (JSON objects) with keys: title, pillar, format ("Short-form").
+User brief:\n${input}
 
-Output JSON ONLY with keys: {"niche_description","target_audience","trending_topics","content_pillars","content_ideas"}`;
+Requirements:\n1) niche_description: one sentence; topic + audience + goal/angle.\n2) target_audience: one detailed paragraph (interests, pain points, motivations, what content they seek).\n3) trending_topics: 5-7 specific, highly searchable keywords for this niche.\n4) content_pillars: 3 distinct pillars that cover the niche broadly.\n5) content_ideas: 6 items; each: {"title":"...","pillar":"...","format":"Short-form"}.\nReturn JSON only.`;
 
-  const response = await fetchGeminiResponse(apiKey, prompt);
-  const text = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const result = await model.generateContent({
+    contents: [{ role: 'user', parts: [{ text: prompt }]}],
+    generationConfig: {
+      temperature: 0.7,
+      maxOutputTokens: 2048,
+      responseMimeType: 'application/json'
+    }
+  });
 
-  // Try JSON block parse
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    try {
-      const parsed = JSON.parse(jsonMatch[0]);
-      // Basic normalization
-      parsed.trending_topics = Array.isArray(parsed.trending_topics) ? parsed.trending_topics : [];
-      parsed.content_pillars = Array.isArray(parsed.content_pillars) ? parsed.content_pillars : [];
-      parsed.content_ideas = Array.isArray(parsed.content_ideas) ? parsed.content_ideas : [];
-      return parsed;
-    } catch {}
-  }
-
-  // Fallback: construct minimal viable structure from plaintext
-  const lines: string[] = text.split('\n').map((l: string) => l.trim()).filter(Boolean) as string[];
-  const fallback = {
-    niche_description: lines.find((l: string) => l.length > 20) || 'A focused niche with short-form potential.',
-    target_audience: lines.slice(1, 4).join(' ') || 'People actively seeking concise, practical content in this area.',
-    trending_topics: lines.filter((l: string) => l.length < 60).slice(0, 7),
-    content_pillars: lines.filter((l: string) => l.length < 40).slice(0, 3),
-    content_ideas: [] as { title: string; pillar: string; format: string }[],
+  const text = result.response.text();
+  const parsed = JSON.parse(text);
+  // Normalize structure
+  return {
+    niche_description: String(parsed.niche_description || ''),
+    target_audience: String(parsed.target_audience || ''),
+    trending_topics: Array.isArray(parsed.trending_topics) ? parsed.trending_topics.map(String) : [],
+    content_pillars: Array.isArray(parsed.content_pillars) ? parsed.content_pillars.map(String) : [],
+    content_ideas: Array.isArray(parsed.content_ideas)
+      ? parsed.content_ideas.map((ci: any) => ({
+          title: String(ci.title || ''),
+          pillar: String(ci.pillar || ''),
+          format: String(ci.format || 'Short-form')
+        }))
+      : []
   };
-  const pillars = fallback.content_pillars.length ? fallback.content_pillars : ['Pillar A', 'Pillar B', 'Pillar C'];
-  for (let i = 0; i < 6; i++) {
-    const p = pillars[i % pillars.length];
-    fallback.content_ideas.push({ title: `Why ${p} matters right now`, pillar: p, format: 'Short-form' });
-  }
-  return fallback;
 }
 
 /**
