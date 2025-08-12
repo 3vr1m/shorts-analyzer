@@ -4,7 +4,7 @@ import { mkdtemp, writeFile, unlink } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import OpenAI from 'openai';
-import { createReadStream } from 'fs';
+import { createReadStream, existsSync } from 'fs';
 
 const execFileAsync = promisify(execFile);
 
@@ -41,16 +41,23 @@ export async function downloadAudioAsWav(videoUrl: string): Promise<AudioResult>
     console.log(`[AUDIO] 📁 Created temp directory: ${tempDir}`);
     console.log(`[AUDIO] 🎵 Downloading audio from: ${videoUrl}`);
     
-    // Download audio using yt-dlp
-    const { stdout, stderr } = await execFileAsync('yt-dlp', [
-      '--extract-audio',
-      '--audio-format', 'wav',
-      '--audio-quality', '0', // Best quality
-      '--output', audioPath,
-      '--no-playlist',
-      '--quiet',
-      videoUrl
-    ]);
+      // Build yt-dlp args with cookies if available
+      const cookiesPath = '/app/youtube-cookies.txt';
+      const args = [
+        ...(existsSync(cookiesPath) ? ['--cookies', cookiesPath] : []),
+        '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0 Safari/537.36',
+        '--referer', 'https://www.youtube.com/',
+        '--extract-audio',
+        '--audio-format', 'wav',
+        '--audio-quality', '0', // Best quality
+        '--output', audioPath,
+        '--no-playlist',
+        '--quiet',
+        videoUrl
+      ];
+
+      // Download audio using yt-dlp
+      const { stdout, stderr } = await execFileAsync('yt-dlp', args);
     
     if (stderr) {
       console.log(`[AUDIO] ⚠️ yt-dlp stderr: ${stderr}`);
