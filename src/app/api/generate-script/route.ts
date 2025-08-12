@@ -42,9 +42,10 @@ export async function GET(request: NextRequest) {
       platform: 'gemini'
     });
 
+    // Return shape expected by frontend (script at top-level)
     return NextResponse.json({
       success: true,
-      data: script
+      script
     });
 
   } catch (error) {
