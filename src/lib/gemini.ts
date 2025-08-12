@@ -286,9 +286,7 @@ export async function generateNicheStrategy(input: string): Promise<{
   if (!apiKey) throw new Error('Gemini API key not configured');
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const candidateModels = process.env.GEMINI_MODEL
-    ? [process.env.GEMINI_MODEL]
-    : ['gemini-2.0-flash-exp', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
+  const modelName = process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp';
 
   const prompt = `You are a senior content strategist.
 Analyze the user's brief and output a COMPLETE strategy as a SINGLE JSON object ONLY with keys:
@@ -311,29 +309,16 @@ Rules:
 
 Return JSON ONLY.`;
 
-  let text = '';
-  let lastErr: unknown = null;
-  for (const m of candidateModels) {
-    try {
-      const model = genAI.getGenerativeModel({ model: m });
-      const result = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }]}],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 2048,
-          responseMimeType: 'application/json'
-        }
-      });
-      text = result.response.text();
-      if (text) break; // success
-    } catch (e) {
-      lastErr = e;
-      continue;
+  const model = genAI.getGenerativeModel({ model: modelName });
+  const result = await model.generateContent({
+    contents: [{ role: 'user', parts: [{ text: prompt }]}],
+    generationConfig: {
+      temperature: 0.7,
+      maxOutputTokens: 2048,
+      responseMimeType: 'application/json'
     }
-  }
-  if (!text) {
-    throw new Error(`Gemini flash models unavailable. Last error: ${lastErr instanceof Error ? lastErr.message : 'unknown'}`);
-  }
+  });
+  const text = result.response.text();
   const parsed = JSON.parse(text);
   // Normalize structure
   let result = {
