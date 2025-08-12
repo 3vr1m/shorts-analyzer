@@ -33,7 +33,25 @@ export async function GET(request: NextRequest) {
 
     // Generate full strategy via Gemini and adapt to frontend shape
     const brief = `Passions/Interests: ${interests.join(', ')}\nGoals: ${goals}\nAudience: ${audience}`;
-    const strategy = await generateNicheStrategy(brief);
+    let strategy;
+    try {
+      strategy = await generateNicheStrategy(brief);
+    } catch (e) {
+      console.warn('Gemini strategy failed, using fallback:', e);
+      // Build a resilient fallback so UI does not break
+      const primary = (interests[0] || 'Your Niche').trim();
+      strategy = {
+        niche_description: `A niche around ${primary} aimed at ${audience || 'people interested in this topic'} with the goal to ${goals || 'educate'}.`,
+        target_audience: audience || `People who care about ${primary.toLowerCase()} and seek practical, inspiring content.`,
+        trending_topics: [primary, `${primary} tips`, `${primary} on a budget`, `${primary} for beginners`, `why ${primary} matters`],
+        content_pillars: [`${primary} basics`, `${primary} tips`, `${primary} mistakes`],
+        content_ideas: Array.from({ length: 6 }).map((_, i) => ({
+          title: `Why ${primary} ${i + 1} matters now`,
+          pillar: [`${primary} basics`, `${primary} tips`, `${primary} mistakes`][i % 3],
+          format: 'Short-form'
+        }))
+      };
+    }
 
     const nicheResult = {
       niche: (strategy.niche_description || '').split(' aimed at ')[0] || 'Your Niche',
