@@ -8,10 +8,8 @@ RUN apk add --no-cache \
     ffmpeg \
     git \
     curl \
-    bash
-
-# Install yt-dlp
-RUN pip3 install --no-cache-dir yt-dlp
+    bash \
+    yt-dlp
 
 # Set working directory
 WORKDIR /app
@@ -19,14 +17,17 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install Node.js dependencies
-RUN npm ci --only=production
+# Install ALL dependencies (needed for build)
+RUN npm ci
 
 # Copy application code
 COPY . .
 
 # Build the application
 RUN npm run build
+
+# Optionally prune dev deps to reduce image size
+RUN npm prune --production
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs
