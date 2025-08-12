@@ -188,8 +188,8 @@ export default function NicheDiscoveryPage() {
               <div className="flex gap-6 overflow-x-auto pb-4">
                 {nicheResult.contentIdeas.map((idea, index) => (
                   <div key={index} className="flex-shrink-0 w-80 border border-default rounded-lg p-6 bg-card shadow-lg">
-                    <h4 className="font-bold mb-4 text-gray-900 dark:text-white text-lg">{idea.title}</h4>
-                    <p className="text-lg text-gray-700 dark:text-gray-200 italic mb-6 leading-relaxed font-medium">"{idea.hook}"</p>
+                    <h4 className="font-bold mb-4 text-black dark:text-white text-lg">{idea.title}</h4>
+                    <p className="text-lg text-gray-800 dark:text-gray-200 italic mb-6 leading-relaxed font-medium">"{idea.hook}"</p>
                     <span className="inline-block px-6 py-3 bg-purple-600 dark:bg-white text-white dark:text-gray-900 text-lg rounded-lg font-bold shadow-lg">
                       {idea.format}
                     </span>
