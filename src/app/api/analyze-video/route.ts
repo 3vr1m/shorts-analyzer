@@ -66,7 +66,14 @@ export async function GET(request: NextRequest) {
       try {
         // Download audio from video
         console.log('[DEBUG-API] 🎵 Downloading audio from video...');
-        const audioResult = await downloadAudioAsWav(videoUrl);
+        // Attempt to provide proxy and client IP hints to yt-dlp
+        const fwdFor = request.headers.get('x-forwarded-for') || '';
+        const realIp = request.headers.get('x-real-ip') || '';
+        const clientIp = (fwdFor.split(',')[0] || realIp || '').trim() || undefined;
+        const proxyUrl = process.env.YTDLP_PROXY_URL || process.env.OUTBOUND_PROXY_URL || undefined;
+        if (clientIp) console.log(`[DEBUG-API] 🌍 Client IP (hint): ${clientIp}`);
+        if (proxyUrl) console.log(`[DEBUG-API] 🛡️ Using outbound proxy for yt-dlp`);
+        const audioResult = await downloadAudioAsWav(videoUrl, { proxyUrl, clientIp });
         console.log(`[DEBUG-API] ✅ Audio downloaded to: ${audioResult.wavPath}`);
         
         // Transcribe audio using OpenAI Whisper
