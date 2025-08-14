@@ -16,9 +16,54 @@ jobs:
           port: ${{ secrets.HETZNER_SSH_PORT || 22 }}
           script: |
             set -e
+            echo "🚀 Starting deployment..."
+            
+            # Navigate to project directory
             cd /root/shorts-analyzer
+            
+            # Check if directory exists
+            if [ ! -d "/root/shorts-analyzer" ]; then
+              echo "❌ Project directory not found!"
+              exit 1
+            fi
+            
+            echo "📥 Fetching latest changes..."
             git fetch origin main
             git reset --hard origin/main
-            docker compose down
+            
+            echo "🔍 Checking required files..."
+            if [ ! -f "docker-compose.yml" ]; then
+              echo "❌ docker-compose.yml not found!"
+              exit 1
+            fi
+            
+            if [ ! -f "Dockerfile" ]; then
+              echo "❌ Dockerfile not found!"
+              exit 1
+            fi
+            
+            echo "🛑 Stopping existing containers..."
+            docker compose down || true
+            
+            echo "🧹 Cleaning up old images..."
+            docker system prune -f || true
+            
+            echo "🔨 Building and starting containers..."
             docker compose up -d --build
-            docker compose ps | cat
+            
+            echo "⏳ Waiting for services to start..."
+            sleep 30
+            
+            echo "🔍 Checking container status..."
+            docker compose ps
+            
+            echo "🏥 Checking application health..."
+            if curl -f http://localhost:3000/api/health; then
+              echo "✅ Application is healthy!"
+            else
+              echo "❌ Application health check failed!"
+              docker compose logs app
+              exit 1
+            fi
+            
+            echo "🎉 Deployment completed successfully!"

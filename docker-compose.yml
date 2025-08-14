@@ -8,54 +8,17 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
-      - RAPIDAPI_KEY=${RAPIDAPI_KEY}
+      - NEXT_PUBLIC_OPENAI_API_KEY=${NEXT_PUBLIC_OPENAI_API_KEY}
+      - NEXT_PUBLIC_GOOGLE_API_KEY=${NEXT_PUBLIC_GOOGLE_API_KEY}
+      - NEXT_PUBLIC_YOUTUBE_API_KEY=${NEXT_PUBLIC_YOUTUBE_API_KEY}
       - ADMIN_API_KEY=${ADMIN_API_KEY}
       - ADMIN_SECRET=${ADMIN_SECRET}
-    depends_on:
-      - postgres
-      - redis
     volumes:
       - ./uploads:/app/uploads
       - ./logs:/app/logs
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # PostgreSQL database
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      - POSTGRES_DB=shorts_analyzer
-      - POSTGRES_USER=${DB_USER:-shorts_user}
-      - POSTGRES_PASSWORD=${DB_PASSWORD:-shorts_password}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-    ports:
-      - "5432:5432"
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-shorts_user}"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Redis for caching and queues
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -75,8 +38,8 @@ services:
     restart: unless-stopped
 
 volumes:
-  postgres_data:
-  redis_data:
+  uploads:
+  logs:
 
 networks:
   default:
